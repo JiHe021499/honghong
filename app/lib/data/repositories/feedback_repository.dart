@@ -56,4 +56,9 @@ class FeedbackRepository {
     }
     return (total: total, hits: hits);
   }
+
+  Future<List<Feedback>> all() => _db.select(_db.feedbacks).get();
+
+  /// 反馈总数（"已学习 N 次哭声"）
+  Future<int> count() async => (await all()).length;
 }

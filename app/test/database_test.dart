@@ -29,7 +29,7 @@ void main() {
     final t0 = DateTime(2026, 10, 13, 8);
     await logs.add(baby.id, CareLogType.feed, at: t0);
     await logs.add(baby.id, CareLogType.feed, at: t0.add(const Duration(hours: 3)));
-    await logs.add(baby.id, CareLogType.sleep, at: t0.add(const Duration(hours: 1)));
+    await logs.startSession(baby.id, CareLogType.sleep, at: t0.add(const Duration(hours: 1)));
     await logs.endSleep(baby.id, at: t0.add(const Duration(hours: 2)));
 
     final latest = await logs.latestByType(baby.id);

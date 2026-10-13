@@ -47,4 +47,12 @@ class CryEventRepository {
             ..orderBy([(e) => OrderingTerm.desc(e.startedAt)])
             ..limit(limit))
           .watch();
+
+  Future<List<CryEvent>> since(String babyId, DateTime from) =>
+      (_db.select(_db.cryEvents)
+            ..where((e) =>
+                e.babyId.equals(babyId) & e.startedAt.isBiggerOrEqualValue(from)))
+          .get();
+
+  Future<List<CryEvent>> all() => _db.select(_db.cryEvents).get();
 }

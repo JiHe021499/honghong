@@ -23,4 +23,8 @@ class BabyRepository {
   Future<void> updateBirthDate(String id, DateTime birth) =>
       (_db.update(_db.babies)..where((b) => b.id.equals(id)))
           .write(BabiesCompanion(birthDate: Value(birth)));
+
+  Future<void> updateNickname(String id, String name) =>
+      (_db.update(_db.babies)..where((b) => b.id.equals(id)))
+          .write(BabiesCompanion(nickname: Value(name)));
 }
