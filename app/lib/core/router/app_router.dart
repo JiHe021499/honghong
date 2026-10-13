@@ -10,6 +10,10 @@ import '../../features/home/home_page.dart';
 import '../../features/insights/insights_page.dart';
 import '../../features/logs/log_detail_page.dart';
 import '../../features/settings/settings_page.dart';
+import '../../features/update/update_page.dart';
+import '../../features/update/update_providers.dart';
+import '../../services/audio/auto_listen.dart';
+import '../../services/update/update_service.dart';
 import '../theme/app_theme.dart';
 
 class Routes {
@@ -21,6 +25,7 @@ class Routes {
   static const insights = '/insights';
   static const family = '/family';
   static const settings = '/settings';
+  static const update = '/update';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -43,14 +48,42 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/cry/result/:id', builder: (_, s) => ResultPage(eventId: s.pathParameters['id']!)),
       GoRoute(path: '/feedback/:id', builder: (_, s) => FeedbackPage(eventId: s.pathParameters['id']!)),
       GoRoute(path: Routes.logs, builder: (_, _) => const LogDetailPage()),
+      GoRoute(path: Routes.update, builder: (_, s) => UpdatePage(initial: s.extra as UpdateCheck?)),
     ],
   );
 });
 
 /// 底部四个标签：首页 / 规律 / 家庭 / 我的（设计稿 .tab）
-class TabShell extends StatelessWidget {
+class TabShell extends ConsumerStatefulWidget {
   const TabShell({super.key, required this.shell});
   final StatefulNavigationShell shell;
+
+  @override
+  ConsumerState<TabShell> createState() => _TabShellState();
+}
+
+class _TabShellState extends ConsumerState<TabShell> {
+  StatefulNavigationShell get shell => widget.shell;
+
+  @override
+  void initState() {
+    super.initState();
+    // 启动后自动检查更新（每 6 小时最多一次，只在安卓真机上）
+    if (inAppUpdateSupported && AutoListenController.enabledInThisEnv) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _autoCheck());
+    }
+  }
+
+  Future<void> _autoCheck() async {
+    try {
+      final s = await ref.read(updateServiceProvider.future);
+      final r = await s.check();
+      if (r == null || !r.hasUpdate || s.isSkipped(r) || !mounted) return;
+      await showUpdateDialog(context, r, s);
+    } catch (_) {
+      // 自动检查失败不打扰用户
+    }
+  }
 
   static const tabs = [('🏠', '首页'), ('📊', '规律'), ('👨‍👩‍👧', '家庭'), ('⚙️', '我的')];
 

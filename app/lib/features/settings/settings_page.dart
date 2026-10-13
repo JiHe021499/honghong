@@ -11,6 +11,7 @@ import '../../core/router/app_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/hh_widgets.dart';
 import '../../services/export/export_service.dart';
+import '../update/update_providers.dart';
 
 /// 我的：宝宝信息、夜间模式、自动监听、全部记录、导出
 class SettingsPage extends ConsumerStatefulWidget {
@@ -136,6 +137,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   trailing: _exporting ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2)) : null,
                   onTap: _exporting ? null : _export),
               tile('参与改进（上传匿名数据）', sub: '第二阶段开放，默认关闭'),
+            ]),
+            group([
+              tile('检查更新',
+                  key: const Key('check-update'),
+                  sub: inAppUpdateSupported
+                      ? '当前版本 ${ref.watch(packageInfoProvider).value?.version ?? '…'}'
+                      : 'iOS 暂不支持应用内更新',
+                  onTap: inAppUpdateSupported ? () => context.push(Routes.update) : null),
             ]),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
