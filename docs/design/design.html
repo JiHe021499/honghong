@@ -1,0 +1,169 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>哄哄 · 新生儿哭声助手 设计稿</title>
+<style>
+:root{--cream:#FFF8F0;--peach:#FFB89A;--peach2:#FF9874;--peachL:#FFE7DB;--blue:#8FB8DE;--blueL:#E3EEF8;--ink:#3D3A45;--sub:#8A8494;--line:#F0E6DC;--green:#8CC7A1}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"PingFang SC","Noto Sans CJK SC","Noto Sans SC","Microsoft YaHei",sans-serif;background:#EFE7DE;color:var(--ink);padding:40px 30px}
+h1.t{font-size:28px;margin-bottom:6px}.ts{color:var(--sub);margin-bottom:28px}
+.wall{display:flex;flex-wrap:wrap;gap:36px}
+.cell{display:flex;flex-direction:column;align-items:center;gap:12px}.cell>b{font-size:15px;color:var(--sub)}
+.phone{width:390px;height:844px;border-radius:48px;background:var(--cream);position:relative;overflow:hidden;box-shadow:0 0 0 10px #2B2830,0 20px 50px rgba(0,0,0,.25)}
+.sb{height:47px;display:flex;justify-content:space-between;align-items:center;padding:0 30px;font-size:15px;font-weight:600}
+.notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:120px;height:32px;border-radius:20px;background:#111}
+.body{padding:8px 20px 100px;height:calc(100% - 47px);overflow:auto}
+.tab{position:absolute;bottom:0;left:0;right:0;height:84px;background:rgba(255,255,255,.92);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding-top:10px;font-size:11px;color:var(--sub)}
+.tab div{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}.tab .on{color:var(--peach2);font-weight:600}.tab i{font-style:normal;font-size:22px}
+.hd{display:flex;justify-content:space-between;align-items:center;margin:6px 0 14px}
+.baby{display:flex;align-items:center;gap:10px}.av{width:40px;height:40px;border-radius:50%;background:var(--peachL);display:grid;place-items:center;font-size:22px}
+.baby b{font-size:17px}.baby small{display:block;color:var(--sub);font-size:12px}
+.ic{width:38px;height:38px;border-radius:50%;background:#fff;display:grid;place-items:center;box-shadow:0 2px 8px rgba(0,0,0,.05);cursor:pointer}
+.status{background:var(--blueL);border-radius:16px;padding:11px 14px;font-size:14px;display:flex;gap:8px;align-items:center}.status em{font-style:normal;font-weight:700;color:#4E7FAE}
+.cryw{display:flex;flex-direction:column;align-items:center;margin:22px 0 14px}
+.cry{width:200px;height:200px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#FFC9AF,var(--peach2));color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:26px;font-weight:700;cursor:pointer;box-shadow:0 0 0 16px rgba(255,152,116,.15),0 0 0 32px rgba(255,152,116,.08),0 14px 30px rgba(255,120,80,.35);border:none;font-family:inherit}
+.cry span{font-size:13px;font-weight:400;opacity:.9;margin-top:6px}
+.tg{margin-top:38px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--sub)}
+.sw{width:42px;height:24px;border-radius:12px;background:var(--green);position:relative}.sw:after{content:"";position:absolute;right:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#fff}
+.sw.off{background:#DDD5CC}.sw.off:after{right:auto;left:3px}
+.qg{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}
+.q{background:#fff;border-radius:18px;padding:14px 0 10px;text-align:center;font-size:13px;font-weight:600;box-shadow:0 3px 10px rgba(160,120,90,.08);cursor:pointer}.q i{display:block;font-style:normal;font-size:26px;margin-bottom:4px}
+.sec{font-size:15px;font-weight:700;margin:6px 0 10px;display:flex;justify-content:space-between}.sec a{font-weight:400;font-size:12px;color:var(--sub)}
+.tl{background:#fff;border-radius:18px;padding:4px 14px}
+.tli{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);font-size:14px}.tli:last-child{border:0}
+.tli .d{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;font-size:16px}.tli small{margin-left:auto;color:var(--sub);font-size:12px}
+.card{background:#fff;border-radius:20px;padding:16px;box-shadow:0 3px 12px rgba(160,120,90,.08);margin-bottom:12px}
+.center{text-align:center}
+.wave{display:flex;align-items:center;justify-content:center;gap:5px;height:120px;margin:30px 0}
+.wave i{width:6px;border-radius:3px;background:var(--peach2);animation:w 1s ease-in-out infinite}
+@keyframes w{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}
+.ring{width:170px;height:170px;border-radius:50%;margin:10px auto;display:grid;place-items:center;background:conic-gradient(var(--peach2) 0 60%,var(--peachL) 0);position:relative}
+.ring:after{content:"";position:absolute;inset:12px;border-radius:50%;background:var(--cream)}
+.ring b{position:relative;z-index:1;font-size:52px;color:var(--peach2)}.ring b small{font-size:18px}
+.btn{display:block;width:100%;border:none;border-radius:16px;padding:15px;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer}
+.pri{background:var(--peach2);color:#fff;box-shadow:0 8px 18px rgba(255,120,80,.3)}.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.rk{display:flex;align-items:center;gap:10px;margin:10px 0;font-size:15px}.rk b{width:62px;white-space:nowrap}.bar{flex:1;height:12px;border-radius:6px;background:#F5EDE5;overflow:hidden}.bar i{display:block;height:100%;border-radius:6px}.rk span{width:40px;text-align:right;font-weight:700}
+.reason{font-size:13px;color:var(--sub);line-height:1.7;margin-top:8px}.reason b{color:var(--ink)}
+.sug{background:linear-gradient(135deg,#FFE7DB,#FFF1E8);border-radius:20px;padding:16px;display:flex;gap:12px;align-items:center;margin-bottom:12px}.sug i{font-style:normal;font-size:32px}.sug b{font-size:18px;display:block}.sug small{color:var(--sub);font-size:12px}
+details{background:#fff;border-radius:16px;padding:13px 16px;margin-bottom:8px;box-shadow:0 2px 8px rgba(160,120,90,.06)}summary{font-weight:700;font-size:15px;cursor:pointer;list-style:none;display:flex;justify-content:space-between}summary:after{content:"⌄";color:var(--sub)}details[open] summary:after{content:"⌃"}
+details p{font-size:13px;line-height:1.7;color:#5E5966;margin-top:8px}details p b{color:var(--peach2)}
+.disc{font-size:11px;color:var(--sub);text-align:center;margin:12px 0;line-height:1.6}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}
+.opt{background:#fff;border-radius:20px;padding:20px 0;text-align:center;font-size:15px;font-weight:600;border:2px solid transparent;cursor:pointer;box-shadow:0 3px 10px rgba(160,120,90,.08)}.opt i{display:block;font-style:normal;font-size:30px;margin-bottom:6px}.opt.sel{border-color:var(--peach2);background:#FFF4EE}
+.prog{height:14px;border-radius:7px;background:#F5EDE5;overflow:hidden;margin:10px 0 6px}.prog i{display:block;width:68%;height:100%;background:linear-gradient(90deg,var(--blue),var(--green))}
+.dim{position:absolute;inset:0;background:rgba(61,58,69,.4)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--cream);border-radius:28px 28px 0 0;padding:12px 22px 34px}
+.grab{width:40px;height:5px;border-radius:3px;background:#DDD3C9;margin:0 auto 14px}
+.lab{font-size:13px;color:var(--sub);margin:16px 0 8px}
+.seg{display:flex;background:#F3EAE1;border-radius:14px;padding:4px}.seg div{flex:1;text-align:center;padding:10px;border-radius:11px;font-size:15px;cursor:pointer}.seg .on{background:#fff;font-weight:700;color:var(--peach2);box-shadow:0 2px 6px rgba(0,0,0,.06)}
+.big{font-size:44px;font-weight:800;text-align:center;color:var(--ink)}.big small{font-size:18px;color:var(--sub)}
+.step{display:flex;justify-content:space-between;align-items:center}.step .ic{width:48px;height:48px;font-size:24px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}.chips span{padding:7px 14px;border-radius:20px;background:#fff;font-size:13px;border:1px solid var(--line)}.chips .on{background:var(--peachL);border-color:var(--peach);color:#C8603C;font-weight:600}
+.night{background:#120C0C;color:#B85A4E}.night .sb{color:#8A4A42}
+.night .status{background:#24130F;color:#A35A4E}.night .status em{color:#D0705F}
+.night .cry{background:radial-gradient(circle at 35% 30%,#5A221B,#3A1410);color:#E07A67;box-shadow:0 0 0 18px rgba(160,50,40,.12),0 0 0 36px rgba(160,50,40,.06);width:230px;height:230px}
+.night .q{background:#1F1210;color:#C0665A;box-shadow:none;padding:22px 0 16px;font-size:16px}.night .q i{filter:grayscale(1) sepia(1) hue-rotate(-30deg) brightness(.6)}
+.night .tab{background:#170E0D;border-color:#2A1714;color:#6E3A33}.night .tab .on{color:#D0705F}
+.voice{margin-top:12px;border:1px dashed #4A221C;border-radius:20px;padding:16px;text-align:center;font-size:16px}.voice b{color:#E07A67}
+.ins{display:flex;gap:12px;align-items:flex-start}.ins i{font-style:normal;font-size:26px}.ins b{display:block;font-size:15px;margin-bottom:3px}.ins small{color:var(--sub);font-size:13px;line-height:1.6}
+.chart{display:flex;align-items:flex-end;gap:5px;height:80px;margin-top:12px}.chart i{flex:1;background:var(--blueL);border-radius:4px 4px 0 0}.chart i.h{background:var(--peach)}
+.fam{display:flex;gap:-8px}.fam span{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;border:3px solid #fff;margin-right:-10px;font-size:18px}
+body.single{padding:0;background:var(--cream)}body.single .t,body.single .ts,body.single .cell>b{display:none}body.single .cell{display:none}body.single .cell.show{display:flex}body.single .phone{box-shadow:none;border-radius:0}body.single .wall{gap:0}
+</style></head><body>
+<h1 class="t">哄哄 · 新生儿哭声助手</h1><p class="ts">高保真设计稿 v1 · 点击按钮可在页面间跳转 · 数据均为示例</p>
+<div class="wall">
+
+<div class="cell" id="c-home"><b>1 · 首页</b><div class="phone"><div class="notch"></div><div class="sb"><span>9:41</span><span>▂▄▆ ▮</span></div>
+<div class="body">
+<div class="hd"><div class="baby"><div class="av">👶</div><div><b>小米粒</b><small>出生第 23 天</small></div></div><div class="ic" onclick="go('night')">🌙</div></div>
+<div class="status">🍼 上次喂奶 <em>2小时40分</em>前 · 😴 已睡 <em>20分钟</em></div>
+<div class="cryw"><button class="cry" onclick="go('rec')">宝宝在哭<span>点一下，帮你听听</span></button>
+<div class="tg"><div class="sw"></div>自动监听哭声 · 已开启</div></div>
+<div class="qg"><div class="q" onclick="go('log')"><i>🍼</i>喂奶</div><div class="q"><i>😴</i>睡觉</div><div class="q"><i>🧷</i>换尿布</div><div class="q"><i>🫧</i>拍嗝</div></div>
+<div class="sec">今天的记录<a>长按按钮可补充细节</a></div>
+<div class="tl">
+<div class="tli"><div class="d" style="background:#E3EEF8">😴</div>入睡<small>16:20</small></div>
+<div class="tli"><div class="d" style="background:#FFE7DB">🍼</div>母乳 · 左侧 15 分钟<small>15:00</small></div>
+<div class="tli"><div class="d" style="background:#E6F4EA">🧷</div>换尿布 · 小便<small>14:45</small></div>
+</div></div>
+<div class="tab"><div class="on"><i>🏠</i>首页</div><div onclick="go('ins')"><i>📊</i>规律</div><div onclick="go('ins')"><i>👨‍👩‍👧</i>家庭</div><div><i>⚙️</i>我的</div></div></div></div>
+
+<div class="cell" id="c-rec"><b>2 · 录音中</b><div class="phone"><div class="notch"></div><div class="sb"><span>9:41</span><span>▂▄▆ ▮</span></div>
+<div class="body center">
+<div class="hd"><div class="ic" onclick="go('home')">✕</div><b>正在听宝宝哭声</b><div style="width:38px"></div></div>
+<p style="color:var(--sub);font-size:14px;margin-top:20px">把手机靠近宝宝，约 30 厘米</p>
+<div class="wave">
+<script>for(let i=0;i<26;i++)document.write(`<i style="height:${30+Math.abs(Math.sin(i*.7))*90}px;animation-delay:${(i%7)*.12}s"></i>`)</script></div>
+<div class="ring"><b>6<small>秒</small></b></div>
+<p style="color:var(--sub);font-size:13px;margin:18px 0 6px">再录几秒就能给出判断</p>
+<p style="font-size:13px;color:#4E7FAE;background:var(--blueL);display:inline-block;padding:6px 14px;border-radius:20px">同时参考：喂奶 · 睡眠 · 尿布记录</p>
+<div style="margin-top:60px"><button class="btn pri" onclick="go('res')">现在就分析</button></div>
+</div></div></div>
+
+<div class="cell" id="c-res"><b>3 · 判断结果</b><div class="phone"><div class="notch"></div><div class="sb"><span>9:41</span><span>▂▄▆ ▮</span></div>
+<div class="body">
+<div class="hd"><div class="ic" onclick="go('home')">‹</div><b>可能的原因</b><div style="width:38px"></div></div>
+<div class="card"><div style="font-size:13px;color:var(--sub)">我们猜，宝宝<b style="color:var(--ink)">可能</b>是…</div>
+<div class="rk"><b>🍼 饿</b><div class="bar"><i style="width:60%;background:var(--peach2)"></i></div><span>60%</span></div>
+<div class="rk"><b>😴 困</b><div class="bar"><i style="width:25%;background:var(--blue)"></i></div><span>25%</span></div>
+<div class="rk"><b>🫧 胀气</b><div class="bar"><i style="width:15%;background:#C3B6E0"></i></div><span>15%</span></div>
+<div class="reason">💡 为什么这么猜：<b>距上次喂奶已 3 小时</b>，哭声有节奏、逐渐变响，和宝宝以往饿的时候相似。</div></div>
+<div class="sug"><i>🍼</i><div><b>建议先试喂奶</b><small>如果 10 分钟内没好转，再试试拍嗝或哄睡</small></div></div>
+<details open><summary>🍼 饿了 · 60%</summary><p><b>怎么判断：</b>转头找奶、吮手指、咂嘴，哭声短促有节奏。<br><b>怎么安抚：</b>先喂奶；吃奶途中可停下拍嗝一次。</p></details>
+<details><summary>😴 困了 · 25%</summary><p><b>怎么判断：</b>揉眼睛、打哈欠、眼神发直。<br><b>怎么安抚：</b>调暗灯光、襁褓包裹、轻拍或白噪音。</p></details>
+<details><summary>🫧 胀气 · 15%</summary><p><b>怎么判断：</b>蹬腿、身体弓起、肚子发硬。<br><b>怎么安抚：</b>竖抱拍嗝、顺时针揉肚子、飞机抱。</p></details>
+<button class="btn ghost" style="margin-top:8px" onclick="go('fb')">宝宝不哭了，告诉我结果</button>
+<p class="disc">结果仅供参考，不能替代医生判断。若哭声异常尖锐、持续超过 2 小时或伴发烧，请及时就医。</p>
+</div></div></div>
+
+<div class="cell" id="c-fb"><b>4 · 哄好反馈</b><div class="phone"><div class="notch"></div><div class="sb"><span>9:41</span><span>▂▄▆ ▮</span></div>
+<div class="body">
+<div class="center" style="margin-top:30px"><div style="font-size:56px">🥰</div><h2 style="font-size:24px;margin:10px 0 6px">辛苦啦，宝宝不哭了</h2><p style="color:var(--sub);font-size:14px">最后是什么起作用了？点一下就好</p></div>
+<div class="opts">
+<div class="opt sel" onclick="sel(this)"><i>🍼</i>喂奶</div><div class="opt" onclick="sel(this)"><i>😴</i>哄睡</div>
+<div class="opt" onclick="sel(this)"><i>🫧</i>拍嗝</div><div class="opt" onclick="sel(this)"><i>🧷</i>换尿布</div>
+<div class="opt" onclick="sel(this)"><i>🤗</i>抱一抱</div><div class="opt" onclick="sel(this)"><i>🤷</i>不确定</div></div>
+<div class="card"><div style="display:flex;justify-content:space-between;font-size:14px"><b>已经更懂你家宝宝了</b><span style="color:#4E7FAE;font-weight:700">68%</span></div>
+<div class="prog"><i></i></div><small style="color:var(--sub);font-size:12px">已学习 34 次哭声 · 再反馈 6 次，判断会更贴合小米粒</small></div>
+<button class="btn pri" style="margin-top:14px" onclick="go('home')">完成</button>
+<p class="disc" style="margin-top:10px">跳过</p></div></div></div>
+
+<div class="cell" id="c-log"><b>5 · 记录详情（长按喂奶）</b><div class="phone"><div class="notch"></div><div class="sb"><span>9:41</span><span>▂▄▆ ▮</span></div>
+<div class="body" style="filter:blur(1px)"><div class="hd"><div class="baby"><div class="av">👶</div><div><b>小米粒</b><small>出生第 23 天</small></div></div></div><div class="status">🍼 上次喂奶 <em>2小时40分</em>前</div></div>
+<div class="dim" onclick="go('home')"></div>
+<div class="sheet"><div class="grab"></div>
+<div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:20px">🍼 记一次喂奶</b><span style="color:var(--sub);font-size:14px">今天 18:05</span></div>
+<div class="lab">方式</div><div class="seg"><div class="on">母乳</div><div>瓶喂母乳</div><div>配方奶</div></div>
+<div class="lab">哪一侧</div><div class="seg"><div>左侧</div><div class="on">右侧</div><div>两侧</div></div>
+<div class="lab">时长</div><div class="step"><div class="ic">−</div><div class="big">15<small> 分钟</small></div><div class="ic">＋</div></div>
+<div class="lab">奶量（瓶喂时填写）</div><div class="chips"><span>60ml</span><span class="on">90ml</span><span>120ml</span><span>150ml</span><span>自定义</span></div>
+<button class="btn pri" style="margin-top:24px" onclick="go('home')">保存记录</button></div></div></div>
+
+<div class="cell" id="c-night"><b>6 · 夜间模式</b><div class="phone night"><div class="notch"></div><div class="sb"><span>3:12</span><span>▂▄▆ ▮</span></div>
+<div class="body">
+<div class="hd"><div class="baby"><div class="av" style="background:#24130F">👶</div><div><b>小米粒</b><small style="color:#6E3A33">夜间模式 · 亮度已调低</small></div></div><div class="ic" style="background:#1F1210" onclick="go('home')">☀️</div></div>
+<div class="status">上次喂奶 <em>2小时40分</em>前 · 已睡 <em>20分钟</em></div>
+<div class="cryw"><button class="cry" onclick="go('rec')">宝宝在哭<span>轻点任意位置</span></button></div>
+<div class="qg" style="grid-template-columns:1fr 1fr;margin-top:30px"><div class="q"><i>🍼</i>喂奶</div><div class="q"><i>😴</i>睡觉</div><div class="q"><i>🧷</i>换尿布</div><div class="q"><i>🫧</i>拍嗝</div></div>
+<div class="voice">🎙 试试说 <b>“记一次喂奶”</b></div></div>
+<div class="tab"><div class="on"><i>🏠</i>首页</div><div><i>📊</i>规律</div><div><i>👨‍👩‍👧</i>家庭</div><div><i>⚙️</i>我的</div></div></div></div>
+
+<div class="cell" id="c-ins"><b>7 · 宝宝规律 & 家庭共享</b><div class="phone"><div class="notch"></div><div class="sb"><span>9:41</span><span>▂▄▆ ▮</span></div>
+<div class="body">
+<div class="hd"><b style="font-size:22px">小米粒的规律</b><span style="font-size:12px;color:var(--sub)">近 7 天</span></div>
+<div class="card"><div class="ins"><i>🌇</i><div><b>通常下午 4 点前后闹觉</b><small>可以在 3:30 左右提前调暗环境、开始哄睡</small></div></div>
+<div class="chart"><script>[2,3,2,4,3,5,9,4,3,2,3,4].forEach((v,i)=>document.write(`<i class="${i==6?'h':''}" style="height:${v*9}px"></i>`))</script></div>
+<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--sub);margin-top:4px"><span>10点</span><span>16点</span><span>21点</span></div></div>
+<div class="card"><div class="ins"><i>🍼</i><div><b>吃奶间隔在变长</b><small>平均 2.6 小时 → 3.0 小时，属于正常成长变化</small></div></div></div>
+<div class="card"><div class="ins"><i>🎯</i><div><b>最常见的哭因：饿（52%）</b><small>其次是困（30%）与胀气（18%）</small></div></div></div>
+<div class="sec" style="margin-top:16px">家庭共享<a>邀请家人 ＋</a></div>
+<div class="card"><div style="display:flex;align-items:center;gap:16px"><div class="fam"><span style="background:#FFE7DB">👩</span><span style="background:#E3EEF8">👨</span><span style="background:#E6F4EA">👵</span></div><div style="margin-left:10px;font-size:13px;line-height:1.6"><b>3 位家人同步中</b><br><span style="color:var(--sub)">爸爸 15 分钟前记录了换尿布</span></div></div></div>
+</div>
+<div class="tab"><div onclick="go('home')"><i>🏠</i>首页</div><div class="on"><i>📊</i>规律</div><div><i>👨‍👩‍👧</i>家庭</div><div><i>⚙️</i>我的</div></div></div></div>
+
+</div>
+<script>
+const p=new URLSearchParams(location.search).get('s');
+function go(s){if(!document.body.classList.contains('single')){document.getElementById('c-'+s).scrollIntoView({behavior:'smooth',inline:'center',block:'center'});return}
+document.querySelectorAll('.cell').forEach(c=>c.classList.toggle('show',c.id=='c-'+s));history.replaceState(0,'','?s='+s)}
+function sel(e){e.parentNode.querySelectorAll('.opt').forEach(o=>o.classList.remove('sel'));e.classList.add('sel')}
+if(p){document.body.classList.add('single');go(p)}
+</script></body></html>

@@ -1,0 +1,17 @@
+# Flutter
+app/.dart_tool/
+app/build/
+app/.flutter-plugins*
+app/pubspec.lock
+*.g.dart
+# Python
+__pycache__/
+.venv/
+ml/data/
+ml/outputs/
+*.tflite
+!app/assets/models/.gitkeep
+# misc
+.DS_Store
+.env
+backend/supabase/docker/.env

@@ -1,0 +1,37 @@
+name: honghong
+description: 哄哄 - 帮新手爸妈判断宝宝为什么哭
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.5.1
+  drift: ^2.18.0
+  sqlite3_flutter_libs: ^0.5.24
+  path_provider: ^2.1.3
+  path: ^1.9.0
+  record: ^5.1.2
+  audio_waveforms: ^1.0.5
+  tflite_flutter: ^0.11.0
+  permission_handler: ^11.3.1
+  share_plus: ^10.0.0
+  archive: ^3.6.1
+  uuid: ^4.4.0
+  intl: ^0.19.0
+  go_router: ^14.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  drift_dev: ^2.18.0
+  build_runner: ^2.4.11
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/models/
