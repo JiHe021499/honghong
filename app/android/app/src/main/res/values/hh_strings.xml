@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hh_widget_desc">哄哄 · 快捷记录（喂奶、睡觉、拍嗝、换尿布）</string>
+    <string name="hh_widget_small_desc">哄哄 · 迷你快捷记录</string>
+    <string name="hh_tile_feed">喂奶</string>
+    <string name="hh_tile_sleep">睡觉</string>
+    <string name="hh_tile_diaper">换尿布</string>
+</resources>

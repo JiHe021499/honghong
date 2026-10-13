@@ -32,6 +32,32 @@
         </activity>
         <!-- 锁屏快捷记录：通知按钮在后台处理，不打开界面 -->
         <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />
+        <!-- 桌面小部件和下拉快捷开关（设计稿 17），按钮交给 home_widget 后台回调执行 Dart 逻辑 -->
+        <receiver android:name=".QuickWidgetProvider" android:exported="false" android:label="哄哄 · 快捷记录">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/hh_widget_info" />
+        </receiver>
+        <receiver android:name=".QuickWidgetSmallProvider" android:exported="false" android:label="哄哄 · 迷你">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/hh_widget_small_info" />
+        </receiver>
+        <receiver android:name="es.antonborri.home_widget.HomeWidgetBackgroundReceiver" android:exported="false">
+            <intent-filter><action android:name="es.antonborri.home_widget.action.BACKGROUND" /></intent-filter>
+        </receiver>
+        <service android:name=".FeedTileService" android:exported="true" android:label="喂奶"
+            android:icon="@drawable/ic_tile_feed" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+            <meta-data android:name="android.service.quicksettings.TOGGLEABLE_TILE" android:value="true" />
+        </service>
+        <service android:name=".SleepTileService" android:exported="true" android:label="睡觉"
+            android:icon="@drawable/ic_tile_sleep" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+            <meta-data android:name="android.service.quicksettings.TOGGLEABLE_TILE" android:value="true" />
+        </service>
+        <service android:name=".DiaperTileService" android:exported="true" android:label="换尿布"
+            android:icon="@drawable/ic_tile_diaper" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

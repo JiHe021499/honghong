@@ -1,0 +1,62 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<title>哄哄 · 桌面小部件 & 下拉快捷开关 设计稿 v1.4</title>
+<style>
+:root{--cream:#FFF8F0;--peach:#FFB89A;--peach2:#FF9874;--peachL:#FFE7DB;--ink:#3D3A45;--sub:#8A8494;--line:#F0E6DC;--blueL:#E3EEF8;--greenL:#E6F4EA}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"PingFang SC","Noto Sans CJK SC",sans-serif;background:var(--cream);color:var(--ink);padding:28px}
+h1{font-size:22px;margin-bottom:6px}.lead{color:var(--sub);font-size:13px;margin-bottom:22px;line-height:1.7}
+.row{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+.home{width:330px;height:560px;border-radius:36px;background:linear-gradient(160deg,#9cc3d9,#c9b7d6 55%,#f0c6b0);padding:40px 14px;position:relative}
+.w{background:#FFF8F0;border-radius:24px;padding:14px;box-shadow:0 6px 18px #0002;margin-bottom:16px}
+.wh{display:flex;align-items:center;gap:8px}
+.wh img{width:30px;height:30px}.wn{font-weight:800;font-size:15px}.ws{font-size:11px;color:var(--sub)}
+.run{margin-left:auto;background:var(--peachL);border-radius:12px;padding:4px 10px;font-size:13px;color:#E0673F;font-weight:800}
+.bs{display:flex;gap:8px;margin-top:12px}
+.b{flex:1;background:#fff;border:1.5px solid var(--line);border-radius:16px;text-align:center;padding:7px 0 6px;font-size:11px}
+.b img{width:30px;height:30px;display:block;margin:0 auto 2px}
+.b.on{background:var(--peach2);border-color:var(--peach2);color:#fff;font-weight:700}
+.small{width:150px;display:inline-block;vertical-align:top}
+.small .bs{margin-top:8px}
+.apps{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:22px;padding:0 10px}
+.apps i{display:block;width:48px;height:48px;border-radius:14px;background:#ffffff88;margin:auto}
+.qs{width:330px;height:560px;border-radius:36px;background:#242330;padding:30px 16px;color:#fff}
+.qt{font-size:12px;opacity:.7;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.t{border-radius:22px;background:#3a3946;padding:12px;display:flex;gap:10px;align-items:center;height:64px}
+.t img{width:30px;height:30px;background:#ffffff22;border-radius:10px;padding:3px}
+.t b{display:block;font-size:13px}.t span{font-size:11px;opacity:.75}
+.t.on{background:#FFB89A;color:#3D3A45}.t.on img{background:#ffffff88}
+.cap{width:330px;font-size:12px;color:var(--sub);margin-top:10px;line-height:1.6}
+.note{max-width:1040px;margin-top:26px;font-size:13px;line-height:1.8}.note li{margin-left:18px}
+</style></head><body>
+<h1>17 · 桌面小部件 & 下拉快捷开关（Android）</h1>
+<p class="lead">和锁屏快捷记录用同一套逻辑：喂奶 / 睡觉 / 拍嗝 开始 → 计时 → 结束，换尿布一点即记。任何一处操作，App、锁屏通知、小部件、快捷开关同时更新。<br>小部件和快捷开关不依赖「锁屏快捷记录」开关。</p>
+<div class="row">
+<div><div class="home">
+ <div class="w"><div class="wh"><img src="../../app/assets/icons/3.0x/avatar_baby.png"><div><div class="wn">小米粒</div><div class="ws">上次喂奶 15:00 · 16:20 醒</div></div></div>
+  <div class="bs"><div class="b"><img src="../../app/assets/icons/3.0x/care_feed.png">开始喂奶</div><div class="b"><img src="../../app/assets/icons/3.0x/care_sleep.png">开始睡觉</div><div class="b"><img src="../../app/assets/icons/3.0x/care_burp.png">开始拍嗝</div><div class="b"><img src="../../app/assets/icons/3.0x/care_diaper.png">换尿布</div></div></div>
+ <div class="w"><div class="wh"><img src="../../app/assets/icons/3.0x/care_feed.png"><div><div class="wn">喂奶中</div><div class="ws">18:05 开始</div></div><div class="run">3:20</div></div>
+  <div class="bs"><div class="b on"><img src="../../app/assets/icons/3.0x/care_feed.png">结束喂奶</div><div class="b"><img src="../../app/assets/icons/3.0x/care_sleep.png">开始睡觉</div><div class="b"><img src="../../app/assets/icons/3.0x/care_burp.png">开始拍嗝</div><div class="b"><img src="../../app/assets/icons/3.0x/care_diaper.png">换尿布</div></div></div>
+ <div class="w small"><div class="wh"><img src="../../app/assets/icons/3.0x/care_sleep.png"><div><div class="wn">睡觉中</div><div class="run" style="margin:2px 0 0;display:inline-block">20:15</div></div></div>
+  <div class="bs"><div class="b on">结束睡觉</div><div class="b">换尿布</div></div></div>
+ <div class="apps"><i></i><i></i><i></i><i></i></div>
+</div>
+<p class="cap">A · 4×2 小部件（上：空闲；中：喂奶中，系统计时器走秒，进行中的按钮变橘色「结束」）。<br>B · 2×1 小部件：显示最主要的进行中计时 + 结束 + 换尿布；空闲时为「开始喂奶 / 换尿布」。</p></div>
+
+<div><div class="qs"><div class="qt">下拉 · 快捷设置（锁屏下也可用）</div>
+ <div class="grid">
+  <div class="t on"><img src="../../app/assets/icons/3.0x/care_feed.png"><div><b>喂奶</b><span>18:05 开始</span></div></div>
+  <div class="t"><img src="../../app/assets/icons/3.0x/care_sleep.png"><div><b>睡觉</b><span>16:20 醒</span></div></div>
+  <div class="t"><img src="../../app/assets/icons/3.0x/care_diaper.png"><div><b>换尿布</b><span>上次 14:45</span></div></div>
+  <div class="t"><img src="../../app/assets/icons/3.0x/night_mode.png" style="opacity:.6"><div><b>勿扰</b><span>系统</span></div></div>
+ </div>
+ <div class="qt" style="margin-top:22px">亮起 = 正在计时；点一下 开始 ↔ 结束。换尿布是一次性按钮，点一下记一条。</div>
+</div><p class="cap">C · 三个快捷开关：喂奶、睡觉（开关型）、换尿布（一次性）。图标为系统要求的单色剪影（由手绘图标描边生成）。</p></div>
+</div>
+<div class="note"><b>规则</b><ul>
+<li>所有入口共用一套动作：start:feed / end:feed / start:sleep / end:sleep / start:burp / end:burp / diaper；写入方式和 App 内完全一致，加入家庭时标记待同步。</li>
+<li>点小部件空白处 / 标题打开 App；按钮在后台执行，不打开 App。</li>
+<li>结束只写结束时间，细节在 App 里补（与锁屏一致）。</li>
+<li>小部件计时用系统 Chronometer，不需要 App 常驻。</li>
+</ul></div>
+</body></html>

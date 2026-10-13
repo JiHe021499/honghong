@@ -4,6 +4,7 @@ import 'package:honghong/data/repositories/baby_repository.dart';
 import 'package:honghong/data/repositories/care_log_repository.dart';
 import 'package:honghong/domain/models/care_log_type.dart';
 import 'package:honghong/services/lockscreen/quick_actions.dart';
+import 'package:honghong/services/lockscreen/quick_surfaces.dart';
 
 void main() {
   late AppDatabase db;
@@ -62,5 +63,30 @@ void main() {
     expect(await runQuickAction(db, 'start:diaper'), isNull);
     expect(await runQuickAction(db, 'bogus'), isNull);
     expect(await CareLogRepository(db).all(), isEmpty);
+  });
+
+  test('小部件/快捷开关数据：空闲、计时中、结束后，与锁屏同一套动作', () async {
+    var d = await loadWidgetData(db);
+    expect(d['hh_run_type'], '');
+    expect(d['hh_feed_start'], 0);
+    expect(d['hh_sub'], '还没有喂奶记录');
+
+    await runQuickAction(db, 'start:feed', now: t0);
+    d = await loadWidgetData(db);
+    expect(d['hh_run_type'], 'feed');
+    expect(d['hh_run_label'], '喂奶中');
+    expect(d['hh_feed_start'], t0.millisecondsSinceEpoch);
+    expect(d['hh_run_start'], t0.millisecondsSinceEpoch);
+    expect(d['hh_sleep_start'], 0);
+    expect(d['hh_sub'], '03:12 开始');
+
+    final done = await runQuickAction(db, 'end:feed', now: t0.add(const Duration(minutes: 10)));
+    await runQuickAction(db, 'diaper', now: t0.add(const Duration(minutes: 11)));
+    d = await loadWidgetData(db, done: done);
+    expect(d['hh_run_type'], '');
+    expect(d['hh_feed_last'], '03:12');
+    expect(d['hh_diaper_last'], '03:23');
+    expect(d['hh_done'], '已记下：喂奶 10 分钟');
+    expect(d['hh_sub'], '上次喂奶 03:12');
   });
 }

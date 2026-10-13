@@ -281,3 +281,11 @@ honghong/
 - 按钮处理：`quickActionBackground`（`@pragma('vm:entry-point')` 后台 isolate）。App 进程在时通过 `IsolateNameServer` 转给主 isolate（同一数据库连接，Riverpod 流立即刷新）；不在时后台 isolate 自己开数据库写入（`busy_timeout` 5s），再重绘通知。
 - 逻辑在 `lib/services/lockscreen/quick_actions.dart`（纯函数 + 仓库调用，有单测）：喂奶/睡觉/拍嗝 开始→计时→结束，换尿布一点即记；写入走 `CareLogRepository`，自动标记待同步给家人（由 App 下次在前台时推送）。
 - 设置「锁屏快捷记录」默认关闭；开启时申请 POST_NOTIFICATIONS（Android 13+），并提示锁屏显示内容、电池不限制。
+
+## 附：桌面小部件 & 下拉快捷开关（v1.4，Android）
+
+设计稿：`docs/design/widgets.html` / `screens-17-widgets.png`。
+- 原生：`android/app/src/main/kotlin/com/honghong/honghong/QuickSurfaces.kt`：`QuickWidgetProvider`（4×2）、`QuickWidgetSmallProvider`（2×1）、`FeedTileService` / `SleepTileService`（开关型）、`DiaperTileService`（一次性）。图标：小部件用手绘 `hh_care_*`，快捷开关用手绘图标描线生成的单色 `ic_tile_*`。
+- 数据：Dart `QuickSurfaces.publish` 把 `widgetData()`（纯函数，有单测）写入 home_widget 的 SharedPreferences，再触发小部件更新；小部件 Provider 收到更新时顺带 `TileService.requestListeningState` 刷新快捷开关。
+- 动作：按钮/开关发 `honghong://quick?a=<动作>` 给 home_widget 后台回调 `quickWidgetBackground` → `runQuickActionInBackground`，与锁屏通知完全同一条路径（App 在运行时转主 isolate；否则后台 isolate 写库并刷新全部入口）。
+- 主 isolate 在任何护理记录变化时刷新全部入口；锁屏通知仍只在开关打开时显示，小部件和快捷开关不依赖该开关。

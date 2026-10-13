@@ -8,7 +8,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/prefs.dart';
 import '../../core/providers.dart';
 import 'lockscreen_notification.dart';
+import 'package:home_widget/home_widget.dart';
+
 import 'quick_actions.dart';
+import 'quick_surfaces.dart';
 
 /// 设置里的"锁屏快捷记录"开关（默认关闭）
 class LockscreenEnabled extends Notifier<bool> {
@@ -44,9 +47,11 @@ class LockscreenController with WidgetsBindingObserver {
   bool _started = false;
 
   Future<void> start() async {
-    if (_started || !LockscreenNotification.supported) return;
+    if (_started || !QuickSurfaces.supported) return;
     _started = true;
     WidgetsBinding.instance.addObserver(this);
+    // 小部件/快捷开关按钮的后台回调（不依赖锁屏开关）
+    await HomeWidget.registerInteractivityCallback(quickWidgetBackground);
     await LockscreenNotification.init(onForegroundAction: (r) {
       if (r.actionId != null) handle(r.actionId!);
     });
@@ -68,15 +73,21 @@ class LockscreenController with WidgetsBindingObserver {
     }
   }
 
+  String? _done;
+  DateTime? _doneAt;
+
   Future<void> handle(String actionId) async {
     final db = _ref.read(databaseProvider);
-    final done = await runQuickAction(db, actionId);
-    await refresh(done: done);
+    _done = await runQuickAction(db, actionId);
+    _doneAt = DateTime.now();
+    await refresh();
   }
 
-  Future<void> refresh({String? done}) async {
-    if (!(_ref.read(prefsProvider).getBool(LockscreenNotification.prefKey) ?? false)) return;
-    await LockscreenNotification.show(await loadQuickState(_ref.read(databaseProvider), done: done));
+  /// 刷新所有快捷入口：小部件和快捷开关总是刷新，锁屏通知只在开关打开时显示
+  /// "已记下…"确认在 2 分钟内保留（数据库变化触发的刷新不会把它冲掉）
+  Future<void> refresh() {
+    final keep = _doneAt != null && DateTime.now().difference(_doneAt!) < const Duration(minutes: 2);
+    return QuickSurfaces.publish(_ref.read(databaseProvider), done: keep ? _done : null, prefs: _ref.read(prefsProvider));
   }
 
   void dispose() {

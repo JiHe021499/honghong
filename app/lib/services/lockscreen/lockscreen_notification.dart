@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/db/app_database.dart';
 import 'quick_actions.dart';
+import 'quick_surfaces.dart';
 
 /// 锁屏快捷记录：一条常驻、锁屏可见的通知，按钮在后台 isolate 里直接写数据库，不需要解锁。
 /// 不使用前台服务：计时由系统 chronometer 显示，App 不需要常驻。
@@ -82,26 +83,38 @@ class LockscreenNotification {
   }
 }
 
-/// 后台 isolate 入口：App 没开、锁屏状态下点按钮时执行
+/// 后台 isolate 入口：App 没开、锁屏状态下点通知按钮时执行
 @pragma('vm:entry-point')
 Future<void> quickActionBackground(NotificationResponse r) async {
   final id = r.actionId;
   if (id == null) return;
+  await runQuickActionInBackground(id);
+}
+
+/// 桌面小部件和下拉快捷开关的入口（home_widget 后台回调，uri: honghong://quick?a=start:feed）
+@pragma('vm:entry-point')
+Future<void> quickWidgetBackground(Uri? uri) async {
+  final id = uri?.queryParameters['a'];
+  if (id == null) return;
+  await runQuickActionInBackground(id);
+}
+
+/// 所有快捷入口共用：App 在运行时交给主 isolate（同一个数据库连接，界面立刻刷新）；
+/// 否则自己开数据库写入，再刷新锁屏通知、小部件和快捷开关。
+Future<void> runQuickActionInBackground(String id) async {
   WidgetsFlutterBinding.ensureInitialized();
   DartPluginRegistrant.ensureInitialized();
-  // App 在运行时交给主 isolate 处理（同一个数据库连接，界面立刻刷新）
   final main = IsolateNameServer.lookupPortByName(LockscreenNotification.portName);
   if (main != null) {
     main.send(id);
     return;
   }
   final prefs = await SharedPreferences.getInstance();
-  if (!(prefs.getBool(LockscreenNotification.prefKey) ?? false)) return;
   final db = AppDatabase();
   try {
     final done = await runQuickAction(db, id);
-    await LockscreenNotification.init();
-    await LockscreenNotification.show(await loadQuickState(db, done: done));
+    if (prefs.getBool(LockscreenNotification.prefKey) ?? false) await LockscreenNotification.init();
+    await QuickSurfaces.publish(db, done: done, prefs: prefs);
   } finally {
     await db.close();
   }
