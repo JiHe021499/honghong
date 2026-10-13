@@ -31,7 +31,14 @@ api.example.com {
 
 见 `redeploy/RUNBOOK.md` 和 `redeploy/redeploy.sh`（一条命令在干净服务器上全新部署，生成新密钥，执行 0001+0002，设置 GitHub secret）。
 
-## 历史部署：nc_am（2026-10，已确认被入侵，停用；以下密钥全部作废）
+## 当前部署：nc_am（2026-10-14 全新重建）
+
+- 2026-10-14 用 `redeploy/redeploy.sh` 全新部署：旧栈和数据卷、旧备份全部删除，JWT secret / anon / service_role key / 数据库密码 / Studio 账号全部重新生成（只在服务器 `.env` 和 bot 私有存储）
+- 网关 `127.0.0.1:8000`、Studio `127.0.0.1:54323`；OpenResty 站点和 Cloudflare tunnel 沿用（只放行 /auth/v1、/rest/v1、/storage/v1）
+- 已执行 0001 + 0002；公网验证：匿名注册、家庭创建/加入、外人隔离、Storage 按设备目录隔离均通过，测试用户已删除
+- 备份：`redeploy/backup.sh` → `/opt/honghong-supabase/backup.sh`，crontab 每天 03:30（服务器时间 CEST）
+
+## 历史部署：nc_am 第一次部署（2026-10-13，服务器被入侵，已整体删除；以下密钥全部作废）
 
 - 地址：`https://honghong.hczhw.com`（Cloudflare 代理 → 源站 1Panel OpenResty :80 → `127.0.0.1:8000` Supabase 网关）
 - 目录：`/opt/honghong-supabase`（官方 `supabase/docker`，网关为 envoy），`.env` 权限 600，**密钥只在服务器和 bot 私有存储，不入库**

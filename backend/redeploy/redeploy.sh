@@ -41,7 +41,8 @@ done
 [ -n "$HOST" ] && [ -n "$URL" ] && [ -n "$SECRETS_OUT" ] || { echo "需要 --host --url --secrets-out"; exit 2; }
 here=$(cd "$(dirname "$0")" && pwd)
 mig="$here/../supabase/migrations"
-r() { $SSH "$HOST" "bash -lc $(printf %q "$1")"; }
+# 远端脚本经 stdin 交给 bash（登录 shell 可能是 fish，不能直接拼命令行）
+r() { printf '%s\n' "$1" | $SSH "$HOST" bash -s; }
 
 echo "目标：$HOST:$REMOTE_DIR  公网：$URL  仓库 secret：$([ $SKIP_GH = 1 ] && echo 跳过 || echo "$REPO")"
 if [ $YES != 1 ]; then echo "加 --yes 才会真正执行"; exit 1; fi
@@ -55,7 +56,7 @@ echo "== 1. 拉官方 supabase/docker"
 r "set -e; sudo mkdir -p '$REMOTE_DIR' && sudo chown \$(id -u):\$(id -g) '$REMOTE_DIR'
    t=\$(mktemp -d); git clone -q --depth 1 --branch '$SUPABASE_REF' https://github.com/supabase/supabase \"\$t/s\"
    cp -r \"\$t/s/docker/.\" '$REMOTE_DIR/'; rm -rf \"\$t\"; cd '$REMOTE_DIR'; cp .env.example .env; chmod 600 .env"
-$SSH "$HOST" "cat > '$REMOTE_DIR/docker-compose.override.yml'" < "$here/docker-compose.override.yml"
+$SSH "$HOST" "cat > $REMOTE_DIR/docker-compose.override.yml" < "$here/docker-compose.override.yml"
 
 echo "== 2/3. 生成全新密钥并写配置"
 r "set -e; cd '$REMOTE_DIR'
@@ -72,6 +73,7 @@ r "set -e; cd '$REMOTE_DIR'
    setv ENABLE_EMAIL_SIGNUP false
    setv ENABLE_PHONE_SIGNUP false
    setv DISABLE_SIGNUP false
+   setv COMPOSE_FILE docker-compose.yml:docker-compose.override.yml
    grep -q '^ANON_KEY=ey' .env && grep -q '^JWT_SECRET=..' .env"
 
 echo "== 4. 启动"
@@ -92,8 +94,8 @@ r "docker exec supabase-db psql -U postgres -c \"notify pgrst, 'reload schema'\"
 
 echo "== 7. 保存密钥到本机 $SECRETS_OUT"
 umask 077
-$SSH "$HOST" "cat '$REMOTE_DIR/.env'" > "$SECRETS_OUT"
-chmod 600 "$SECRETS_OUT"
+$SSH "$HOST" "cat $REMOTE_DIR/.env" > "$SECRETS_OUT"
+chmod 600 "$SECRETS_OUT" 2>/dev/null || echo "  （目标文件系统不支持 chmod，请确认存放位置本身是私有的）"
 ANON=$(grep -E '^ANON_KEY=' "$SECRETS_OUT" | cut -d= -f2-)
 
 if [ $SKIP_SMOKE != 1 ]; then

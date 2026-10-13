@@ -11,6 +11,14 @@ services:
   api-gw:
     ports: !override
       - "127.0.0.1:8000:8000"
+    mem_limit: 256m
   studio:
     ports: !override
       - "127.0.0.1:54323:3000"
+    mem_limit: 1g
+  auth: {mem_limit: 256m}
+  rest: {mem_limit: 256m}
+  storage: {mem_limit: 512m}
+  imgproxy: {mem_limit: 512m}
+  meta: {mem_limit: 256m}
+  db: {mem_limit: 2g, shm_size: 256m}
