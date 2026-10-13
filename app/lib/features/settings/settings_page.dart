@@ -12,6 +12,8 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/hh_widgets.dart';
 import '../../services/cloud/cloud_providers.dart';
+import '../../services/lockscreen/lockscreen_controller.dart';
+import '../../services/lockscreen/lockscreen_notification.dart';
 import '../../services/export/export_service.dart';
 import '../update/update_providers.dart';
 
@@ -112,6 +114,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final cloud = ref.watch(researchUploaderProvider) != null;
     final research = ref.watch(researchOptInProvider);
     final sync = ref.watch(syncStatusProvider);
+    final lock = ref.watch(lockscreenEnabledProvider);
     final night = ref.watch(nightModeProvider);
     final auto = ref.watch(autoListenProvider);
     final baby = ref.watch(currentBabyProvider).value;
@@ -181,6 +184,35 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   icon: AppIcon.autoListen,
                   sub: 'App 在前台时听到哭声自动开始录音（本地识别，不上传）',
                   trailing: Switch(value: auto, onChanged: (v) => ref.read(autoListenProvider.notifier).set(v))),
+              tile('锁屏快捷记录',
+                  key: const Key('lockscreen'),
+                  icon: AppIcon.phone,
+                  sub: LockscreenNotification.supported
+                      ? '常驻通知，不解锁就能开始/结束喂奶、睡觉、拍嗝，记换尿布'
+                      : '目前只支持安卓',
+                  trailing: Switch(
+                      value: lock,
+                      onChanged: !LockscreenNotification.supported
+                          ? null
+                          : (v) async {
+                              final ok = await ref.read(lockscreenEnabledProvider.notifier).set(v);
+                              if (!context.mounted) return;
+                              if (!ok) {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('需要允许通知，才能在锁屏上显示')));
+                              } else if (v) {
+                                await showDialog<void>(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: const Text('已开启锁屏快捷记录'),
+                                    content: const Text('如果锁屏上看不到按钮或按了没反应，请在系统设置里：\n\n'
+                                        '· 通知 → 锁屏通知 → 显示所有内容\n'
+                                        '· 应用 → 哄哄 → 电池 → 不限制（中兴 MyOS：手机管家 → 耗电管理，允许哄哄后台运行）\n'
+                                        '· 通知 → 哄哄 → 允许锁屏显示'),
+                                    actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('知道了'))],
+                                  ),
+                                );
+                              }
+                            })),
             ]),
             group([
               tile('全部记录', sub: '查看、修改或删除历史记录', onTap: () => context.push(Routes.logs)),

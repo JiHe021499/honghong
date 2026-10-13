@@ -1,0 +1,69 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<title>哄哄 · 锁屏快捷记录 设计稿 v1.3</title>
+<style>
+:root{--cream:#FFF8F0;--peach:#FFB89A;--peach2:#FF9874;--peachL:#FFE7DB;--ink:#3D3A45;--sub:#8A8494;--line:#F0E6DC}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"PingFang SC","Noto Sans CJK SC",sans-serif;background:var(--cream);color:var(--ink);padding:28px}
+h1{font-size:22px;margin-bottom:6px}.lead{color:var(--sub);font-size:13px;margin-bottom:22px;line-height:1.7}
+.row{display:flex;gap:26px;flex-wrap:wrap}
+.phone{width:300px;height:620px;border-radius:38px;background:linear-gradient(170deg,#2b2a3a,#463a4a 60%,#5b4545);padding:18px 14px;position:relative;box-shadow:0 10px 30px #0003;color:#fff}
+.clock{text-align:center;font-size:58px;font-weight:300;margin-top:36px;letter-spacing:2px}
+.date{text-align:center;font-size:13px;opacity:.8;margin-bottom:26px}
+.lock{position:absolute;bottom:22px;left:0;right:0;text-align:center;font-size:12px;opacity:.6}
+.n{background:#fffdfb;color:var(--ink);border-radius:20px;padding:12px 14px 6px;margin-bottom:10px}
+.nh{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--sub)}
+.nh i{width:14px;height:14px;border-radius:4px;background:var(--peach2);display:inline-block}
+.nb{display:flex;gap:10px;align-items:center;margin:8px 0 6px}
+.nb img{width:40px;height:40px;background:var(--peachL);border-radius:12px;padding:4px}
+.t{font-weight:700;font-size:15px}.s{font-size:12px;color:var(--sub);margin-top:2px}
+.tm{color:#E0673F;font-variant-numeric:tabular-nums;font-weight:800}
+.acts{display:flex;border-top:1px solid var(--line);margin-top:4px}
+.acts b{flex:1;text-align:center;font-size:13px;color:#E0673F;padding:9px 0;font-weight:700}
+.acts b.sec{color:var(--ink);font-weight:500}
+.cap{width:300px;font-size:12px;color:var(--sub);margin-top:10px;line-height:1.6}
+.note{max-width:960px;margin-top:26px;font-size:13px;line-height:1.8}
+.note li{margin-left:18px}
+.set{width:300px;height:620px;border-radius:38px;background:var(--cream);border:1px solid var(--line);padding:22px 16px;color:var(--ink)}
+.card{background:#fff;border-radius:20px;padding:6px 0;box-shadow:0 3px 12px #ff98741a;margin-top:14px}
+.it{display:flex;gap:10px;align-items:center;padding:12px 14px}
+.it img{width:30px}.sw{flex-shrink:0;margin-left:auto;width:42px;height:24px;border-radius:12px;background:var(--peach2);position:relative}
+.sw:after{content:"";position:absolute;right:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#fff}
+</style></head><body>
+<h1>16 · 锁屏快捷记录（Android）</h1>
+<p class="lead">不解锁、不打开 App，在锁屏通知上直接记。喂奶 / 睡觉 / 拍嗝是「开始 → 计时 → 结束」，换尿布一点即记。<br>
+通知常驻（可在设置里关闭），锁屏上显示完整内容；计时由系统时钟走，不耗电、不用前台服务。</p>
+<div class="row">
+ <div><div class="phone"><div class="clock">03:12</div><div class="date">10月14日 星期三</div>
+  <div class="n"><div class="nh"><i></i>哄哄 · 快捷记录</div>
+   <div class="nb"><img src="../../app/assets/icons/3.0x/avatar_baby.png"><div><div class="t">小米粒 · 上次喂奶 2小时40分前</div><div class="s">已睡 20 分钟 · 点下面直接记</div></div></div>
+   <div class="acts"><b>开始喂奶</b><b>开始睡觉</b><b class="sec">换尿布</b></div></div>
+  <div class="lock">上滑解锁</div></div>
+  <p class="cap">A · 空闲：三个按钮。拍嗝一般紧跟喂奶，所以放在喂奶进行中时出现。</p></div>
+
+ <div><div class="phone"><div class="clock">03:15</div><div class="date">10月14日 星期三</div>
+  <div class="n"><div class="nh"><i></i>哄哄 · 快捷记录 · <span class="tm">3:20</span></div>
+   <div class="nb"><img src="../../app/assets/icons/3.0x/care_feed.png"><div><div class="t">喂奶中 · <span class="tm">3:20</span></div><div class="s">03:12 开始 · 结束后可在 App 里补方式和奶量</div></div></div>
+   <div class="acts"><b>结束喂奶</b><b class="sec">开始拍嗝</b><b class="sec">换尿布</b></div></div>
+  <div class="lock">上滑解锁</div></div>
+  <p class="cap">B · 喂奶进行中：系统计时器实时走秒；「结束喂奶」直接写入结束时间。睡觉中同理：结束睡觉 / 开始喂奶 / 换尿布。</p></div>
+
+ <div><div class="phone"><div class="clock">03:31</div><div class="date">10月14日 星期三</div>
+  <div class="n"><div class="nh"><i></i>哄哄 · 快捷记录</div>
+   <div class="nb"><img src="../../app/assets/icons/3.0x/check_done.png"><div><div class="t">已记下：喂奶 18 分钟</div><div class="s">03:12 – 03:30 · 打开 App 可补细节</div></div></div>
+   <div class="acts"><b>开始喂奶</b><b>开始睡觉</b><b class="sec">换尿布</b></div></div>
+  <div class="lock">上滑解锁</div></div>
+  <p class="cap">C · 结束 / 换尿布后：一行确认（"已记下换尿布 · 未分类"），按钮回到空闲状态。两个计时同时进行时，显示两个「结束」+ 换尿布。</p></div>
+
+ <div><div class="set"><div style="font-size:22px;font-weight:800">我的</div>
+  <div class="card"><div class="it"><img src="../../app/assets/icons/3.0x/phone.png"><div><div style="font-size:15px">锁屏快捷记录</div><div style="font-size:12px;color:var(--sub)">常驻通知，不解锁就能开始/结束喂奶、睡觉、拍嗝，记换尿布</div></div><div class="sw"></div></div></div>
+  <p style="font-size:12px;color:var(--sub);margin-top:12px;line-height:1.7">开启时（Android 13+）先申请通知权限。<br>中兴等机型需要允许「锁屏通知显示内容」，并把哄哄设为「不限制」电池优化，否则按钮可能延迟。</p></div>
+  <p class="cap">D · 设置入口（默认关闭，第一次开启时引导）。</p></div>
+</div>
+<div class="note"><b>交互规则</b><ul>
+<li>按钮在锁屏直接生效（不要求解锁）；点通知正文才会解锁并打开 App 首页。</li>
+<li>结束 = 写入结束时间，细节（方式、侧别、奶量、备注）之后在 App 里补；App 首页同步显示。</li>
+<li>App 里开始/结束任何记录，通知同时刷新；锁屏上的操作，App 打开时立即可见。</li>
+<li>加入家庭时：锁屏记录同样标记待同步，App 下次在前台/联网时推送给家人。</li>
+<li>通知不可滑掉（常驻），要关闭去「我的 → 锁屏快捷记录」。Android 系统通知最多 3 个按钮。</li>
+</ul></div>
+</body></html>

@@ -54,6 +54,7 @@ dependencies:
   open_filex: ^4.7.0
   supabase_flutter: ^2.18.3
   connectivity_plus: ^7.3.2
+  flutter_local_notifications: ^22.3.2
 
 dev_dependencies:
   flutter_test:

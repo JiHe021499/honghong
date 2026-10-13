@@ -273,3 +273,11 @@ honghong/
 - **自动监听**：`assets/models/yamnet.tflite`（TF Hub YAMNet 分类版，输入 15600 个 16kHz 采样，输出 521 类），取第 19/20 类（哭泣 / 婴儿哭）得分，3 帧里 2 帧 ≥ 0.35 触发，冷却 60 秒。只在 App 前台时工作。
 - **导出**：「我的 → 导出录音和标注」生成 `honghong-export-*.zip`（`data.json` + `recordings/*.wav`），通过系统分享发出。
 - **截图测试**：`flutter test --tags golden --run-skipped --update-goldens` 生成 `app/test/goldens/*.png`，用来和 `docs/design/screens-*.png` 对照（CI 默认跳过）。
+
+## 附：锁屏快捷记录（v1.3，Android）
+
+设计稿：`docs/design/lockscreen.html` / `screens-16-lockscreen.png`。
+- `flutter_local_notifications` 常驻通知（`ongoing`、`VISIBILITY_PUBLIC`、低重要性静音），按钮 `showsUserInterface: false`，计时用系统 chronometer；**不用前台服务**。
+- 按钮处理：`quickActionBackground`（`@pragma('vm:entry-point')` 后台 isolate）。App 进程在时通过 `IsolateNameServer` 转给主 isolate（同一数据库连接，Riverpod 流立即刷新）；不在时后台 isolate 自己开数据库写入（`busy_timeout` 5s），再重绘通知。
+- 逻辑在 `lib/services/lockscreen/quick_actions.dart`（纯函数 + 仓库调用，有单测）：喂奶/睡觉/拍嗝 开始→计时→结束，换尿布一点即记；写入走 `CareLogRepository`，自动标记待同步给家人（由 App 下次在前台时推送）。
+- 设置「锁屏快捷记录」默认关闭；开启时申请 POST_NOTIFICATIONS（Android 13+），并提示锁屏显示内容、电池不限制。

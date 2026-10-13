@@ -43,6 +43,8 @@ class AppDatabase extends _$AppDatabase {
         },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON');
+          // 锁屏按钮可能在另一个 isolate 里同时写库
+          await customStatement('PRAGMA busy_timeout = 5000');
         },
       );
 }
