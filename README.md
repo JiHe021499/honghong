@@ -21,10 +21,26 @@ backend/   自建 Supabase 配置与迁移（第二阶段）
 ```
 
 ## 开发
+
+环境：Flutter 3.47.7 stable（Dart 3.13.5）。本机（box）已安装在 `/opt/flutter`。
+
 ```bash
 cd app
-flutter create . --platforms=android,ios   # 首次生成平台工程
 flutter pub get
-dart run build_runner build                # 生成 drift 代码
-flutter run
+dart run build_runner build --delete-conflicting-outputs   # 生成 drift 代码（*.g.dart 不入库）
+flutter analyze
+flutter test
+flutter run                                                # 需连接 iOS/Android 设备或模拟器
+```
+
+代码结构：
+- `lib/core/`：路由（go_router）、主题（日/夜）、Riverpod providers
+- `lib/data/`：drift 数据库与仓库（Baby / CareLog / CryEvent / Feedback）
+- `lib/domain/`：CryPredictor 接口、规则版实现、上下文生成
+- `lib/features/`：首页、录音、结果、反馈、记录、规律、设置
+- `test/`：规则预测和内存数据库测试
+
+ML（第三阶段）：
+```bash
+cd ml && python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
 ```

@@ -1,0 +1,26 @@
+import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
+
+import '../db/app_database.dart';
+
+class BabyRepository {
+  BabyRepository(this._db);
+  final AppDatabase _db;
+
+  /// v1 只支持一个宝宝：没有就创建一个默认的。
+  Future<Baby> ensureDefault({DateTime? now}) async {
+    final existing = await (_db.select(_db.babies)..limit(1)).getSingleOrNull();
+    if (existing != null) return existing;
+    final baby = BabiesCompanion.insert(
+      id: const Uuid().v4(),
+      nickname: '宝宝',
+      birthDate: (now ?? DateTime.now()).subtract(const Duration(days: 30)),
+    );
+    await _db.into(_db.babies).insert(baby);
+    return (_db.select(_db.babies)..limit(1)).getSingle();
+  }
+
+  Future<void> updateBirthDate(String id, DateTime birth) =>
+      (_db.update(_db.babies)..where((b) => b.id.equals(id)))
+          .write(BabiesCompanion(birthDate: Value(birth)));
+}

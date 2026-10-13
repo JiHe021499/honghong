@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import '../models/cry_cause.dart';
@@ -22,6 +23,31 @@ class Prediction {
   final List<CauseScore> ranked; // 按概率降序
   final String predictorVersion;
   List<CauseScore> top(int n) => ranked.take(n).toList();
+
+  Map<String, Object?> toJson() => {
+        'version': predictorVersion,
+        'ranked': [
+          for (final s in ranked)
+            {'cause': s.cause.name, 'p': s.probability, 'reason': s.reason}
+        ],
+      };
+
+  factory Prediction.fromJson(Map<String, dynamic> json) => Prediction(
+        predictorVersion: json['version'] as String,
+        ranked: [
+          for (final r in (json['ranked'] as List).cast<Map<String, dynamic>>())
+            CauseScore(CryCause.values.byName(r['cause'] as String),
+                (r['p'] as num).toDouble(), r['reason'] as String),
+        ],
+      );
+
+  static Prediction decode(String s) =>
+      Prediction.fromJson(jsonDecode(s) as Map<String, dynamic>);
+
+  static String? topCauseFromJson(String s) {
+    final r = decode(s).ranked;
+    return r.isEmpty ? null : r.first.cause.name;
+  }
 }
 
 /// 猜原因的统一接口。三个阶段只替换实现：
