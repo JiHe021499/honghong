@@ -17,7 +17,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -39,6 +39,7 @@ class AppDatabase extends _$AppDatabase {
             await customStatement('DROP INDEX IF EXISTS care_logs_one_active');
             await customStatement(activeSessionIndexSql);
           }
+          if (from < 4) await m.addColumn(careLogs, careLogs.updatedBy);
         },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON');

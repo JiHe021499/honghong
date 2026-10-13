@@ -52,7 +52,7 @@ class CareLogRepository {
   /// 点"结束"：停止计时（写入结束时间），之后可在底部面板里微调或"继续"。
   Future<void> stopSession(String id, {DateTime? at}) =>
       (_db.update(_db.careLogs)..where((l) => l.id.equals(id)))
-          .write(CareLogsCompanion(endedAt: Value(at ?? DateTime.now()), updatedAt: Value(DateTime.now()), dirty: const Value(true)));
+          .write(CareLogsCompanion(endedAt: Value(at ?? DateTime.now()), updatedAt: Value(DateTime.now()), updatedBy: const Value(null), dirty: const Value(true)));
 
   /// 点"继续"：撤销结束，回到进行中（开始时间不变）。
   Future<void> resumeSession(String id) async {
@@ -62,7 +62,7 @@ class CareLogRepository {
     final other = await activeSession(log.babyId, type);
     if (other != null && other.id != id) return; // 已经开了新的，不覆盖
     await (_db.update(_db.careLogs)..where((l) => l.id.equals(id)))
-        .write(CareLogsCompanion(endedAt: const Value(null), updatedAt: Value(DateTime.now()), dirty: const Value(true)));
+        .write(CareLogsCompanion(endedAt: const Value(null), updatedAt: Value(DateTime.now()), updatedBy: const Value(null), dirty: const Value(true)));
   }
 
   /// 保存记录：按微调后的时长写结束时间，并写入细节。
@@ -75,6 +75,7 @@ class CareLogRepository {
             endedAt: Value(log.startedAt.add(duration)),
             detail: Value(detail?.encode()),
             updatedAt: Value(DateTime.now()),
+            updatedBy: const Value(null),
             dirty: const Value(true)));
   }
 
@@ -85,7 +86,7 @@ class CareLogRepository {
 
   Future<void> updateDetail(String id, CareDetail detail) =>
       (_db.update(_db.careLogs)..where((l) => l.id.equals(id)))
-          .write(CareLogsCompanion(detail: Value(detail.encode()), updatedAt: Value(DateTime.now()), dirty: const Value(true)));
+          .write(CareLogsCompanion(detail: Value(detail.encode()), updatedAt: Value(DateTime.now()), updatedBy: const Value(null), dirty: const Value(true)));
 
   Future<CareLog?> byId(String id) =>
       (_db.select(_db.careLogs)..where((l) => l.id.equals(id) & l.deleted.not()))
@@ -118,7 +119,7 @@ class CareLogRepository {
     if (log == null) return;
     final now = DateTime.now();
     await (_db.update(_db.careLogs)..where((l) => l.id.equals(id))).write(CareLogsCompanion(
-        deleted: const Value(true), endedAt: Value(log.endedAt ?? now), updatedAt: Value(now), dirty: const Value(true)));
+        deleted: const Value(true), endedAt: Value(log.endedAt ?? now), updatedAt: Value(now), updatedBy: const Value(null), dirty: const Value(true)));
   }
 
   /// 每种类型最近一条
@@ -149,6 +150,18 @@ class CareLogRepository {
                 l.babyId.equals(babyId) & l.deleted.not() & l.startedAt.isBiggerOrEqualValue(from))
             ..orderBy([(l) => OrderingTerm.asc(l.startedAt)]))
           .get();
+
+  /// 家人最近一次记录（家庭卡片上的"爸爸 15 分钟前记录了换尿布"）
+  Stream<CareLog?> watchLatestByFamily() => (_db.select(_db.careLogs)
+        ..where((l) => l.updatedBy.isNotNull() & l.deleted.not())
+        ..orderBy([(l) => OrderingTerm.desc(l.updatedAt)])
+        ..limit(1))
+      .watchSingleOrNull();
+
+  /// 还没推送给家人的条数
+  Future<int> pendingCount() async =>
+      (await (_db.select(_db.careLogs)..where((l) => l.dirty)).get()).length +
+      (await (_db.select(_db.cryEvents)..where((e) => e.dirty)).get()).length;
 
   Future<List<CareLog>> all() => (_db.select(_db.careLogs)..where((l) => l.deleted.not())).get();
 

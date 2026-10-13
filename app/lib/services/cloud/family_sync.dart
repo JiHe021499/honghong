@@ -240,6 +240,7 @@ class FamilySync {
             endedAt: Value(ended),
             detail: Value(r['detail'] as String?),
             updatedAt: Value(dirty ? DateTime.now() : remoteAt),
+            updatedBy: Value(dirty || r['updated_by'] == _api.userId ? null : r['updated_by'] as String?),
             deleted: Value(deleted),
             dirty: Value(dirty),
           ));

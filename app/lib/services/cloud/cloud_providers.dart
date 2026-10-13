@@ -66,8 +66,12 @@ final researchOptInProvider = NotifierProvider<ResearchOptIn, bool>(ResearchOptI
 
 /// 同步状态（给家庭页和设置页显示）
 class SyncStatus {
-  const SyncStatus({this.running = false, this.lastFamilySync, this.error, this.uploaded = 0, this.pendingUploads = 0});
+  const SyncStatus({this.running = false, this.lastFamilySync, this.error, this.uploaded = 0, this.pendingUploads = 0, this.pendingFamily = 0, this.offline = false});
   final bool running;
+  /// 没有网络：记录已存本机，联网后自动同步
+  final bool offline;
+  /// 还没推送给家人的条数
+  final int pendingFamily;
   final DateTime? lastFamilySync;
   final String? error;
   final int uploaded;
@@ -93,6 +97,7 @@ class SyncCoordinator with WidgetsBindingObserver {
   SyncCoordinator(this._ref);
   final Ref _ref;
   StreamSubscription<void>? _dbSub;
+  StreamSubscription<List<ConnectivityResult>>? _netSub;
   Timer? _debounce, _retry;
   int _failures = 0;
   bool _running = false, _again = false, _started = false;
@@ -110,6 +115,10 @@ class SyncCoordinator with WidgetsBindingObserver {
           _debounce?.cancel();
           _debounce = Timer(const Duration(seconds: 4), kick);
         });
+    // 网络恢复时立刻补同步
+    _netSub = Connectivity().onConnectivityChanged.listen((r) {
+      if (!r.contains(ConnectivityResult.none)) kick();
+    });
     kick();
   }
 
@@ -127,8 +136,19 @@ class SyncCoordinator with WidgetsBindingObserver {
     final status = _ref.read(syncStatusProvider.notifier);
     status.put(SyncStatus(running: true, lastFamilySync: _ref.read(syncStatusProvider).lastFamilySync));
     String? error;
+    final conn = await Connectivity().checkConnectivity();
+    final offline = conn.isEmpty || conn.every((c) => c == ConnectivityResult.none);
+    final fam = _ref.read(familySyncProvider);
+    if (offline) {
+      status.put(SyncStatus(
+          offline: true,
+          lastFamilySync: fam?.lastSync,
+          pendingFamily: fam?.familyId == null ? 0 : await _ref.read(careLogRepositoryProvider).pendingCount(),
+          pendingUploads: (await _ref.read(researchUploaderProvider)?.pending())?.length ?? 0));
+      _running = false;
+      return;
+    }
     try {
-      final fam = _ref.read(familySyncProvider);
       if (fam?.familyId != null) {
         final n = await fam!.sync();
         if (n > 0) _ref.invalidate(currentBabyProvider);
@@ -140,7 +160,6 @@ class SyncCoordinator with WidgetsBindingObserver {
     var pending = 0, uploaded = 0;
     if (up != null) {
       try {
-        final conn = await Connectivity().checkConnectivity();
         final version = _ref.read(packageInfoProvider).value?.version ?? '';
         final r = await up.run(onWifi: conn.contains(ConnectivityResult.wifi), appVersion: version);
         if (r.failed > 0) error ??= '有 ${r.failed} 条上传失败，稍后自动重试';
@@ -154,7 +173,8 @@ class SyncCoordinator with WidgetsBindingObserver {
         lastFamilySync: _ref.read(familySyncProvider)?.lastSync,
         error: error,
         uploaded: uploaded,
-        pendingUploads: pending));
+        pendingUploads: pending,
+        pendingFamily: fam?.familyId == null ? 0 : await _ref.read(careLogRepositoryProvider).pendingCount()));
     _retry?.cancel();
     if (error != null) {
       _retry = Timer(_backoff[_failures.clamp(0, _backoff.length - 1)], kick);
@@ -172,6 +192,7 @@ class SyncCoordinator with WidgetsBindingObserver {
   void dispose() {
     if (_started) WidgetsBinding.instance.removeObserver(this);
     _dbSub?.cancel();
+    _netSub?.cancel();
     _debounce?.cancel();
     _retry?.cancel();
   }

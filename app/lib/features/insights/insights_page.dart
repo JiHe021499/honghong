@@ -9,6 +9,7 @@ import '../../domain/insights.dart';
 import '../../domain/models/care_log_type.dart';
 import '../../domain/models/cry_cause.dart';
 import '../../domain/predictor/cry_predictor.dart';
+import '../family/family_card.dart';
 
 class InsightsData {
   const InsightsData({required this.cries, required this.trend, required this.sleepHours, required this.causes, required this.fromFeedback, required this.agreement});
@@ -79,13 +80,7 @@ class InsightsPage extends ConsumerWidget {
               data: (d) => _cards(context, d),
             ),
             const SizedBox(height: 10),
-            Row(children: [
-              Text('家庭共享', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: c.ink)),
-              const Spacer(),
-              Text('第二阶段开放', style: TextStyle(fontSize: 12, color: c.sub)),
-            ]),
-            const SizedBox(height: 10),
-            const FamilyCard(),
+            const FamilyCard(linkToFamily: true),
           ],
         ),
       ),
@@ -193,42 +188,4 @@ class InsightsPage extends ConsumerWidget {
 
   static int _h12(int h) => h > 12 ? h - 12 : (h == 0 ? 12 : h);
   static String _period(int h) => h < 6 ? '凌晨' : h < 11 ? '上午' : h < 13 ? '中午' : h < 19 ? '下午' : '晚上';
-}
-
-/// 家庭共享占位卡（第二阶段才做同步）
-class FamilyCard extends StatelessWidget {
-  const FamilyCard({super.key});
-  @override
-  Widget build(BuildContext context) {
-    final c = context.hh;
-    Widget av(AppIcon e, Color bg) => Container(
-          width: 40,
-          height: 40,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(color: bg, shape: BoxShape.circle, border: Border.all(color: c.card, width: 3)),
-          child: HhIcon(e, size: 28),
-        );
-    return HhCard(
-      padding: const EdgeInsets.all(20),
-      child: Row(children: [
-        SizedBox(
-          width: 100,
-          height: 40,
-          child: Stack(children: [
-            av(AppIcon.avatarMom, c.peachL),
-            Positioned(left: 30, child: av(AppIcon.avatarDad, c.blueL)),
-            Positioned(left: 60, child: av(AppIcon.avatarGrandma, c.greenL)),
-          ]),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('家人一起记录', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: c.ink)),
-            const SizedBox(height: 2),
-            Text('现在数据只存在这台手机上，同步功能后续开放', style: TextStyle(fontSize: 13, color: c.sub)),
-          ]),
-        ),
-      ]),
-    );
-  }
 }

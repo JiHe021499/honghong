@@ -77,6 +77,10 @@ void main() {
     expect(logsB.length, 2);
     expect(logsB.every((l) => l.babyId == babyA.id), isTrue, reason: 'B 的记录改挂到家庭宝宝');
     expect((await dbB.select(dbB.babies).get()).single.id, babyA.id);
+    // 家人同步下来的记录带上记录人，本机写的为空
+    expect(logsA.firstWhere((l) => l.type == 'diaper').updatedBy, 'ub');
+    expect(logsA.firstWhere((l) => l.type == 'feed').updatedBy, isNull);
+    expect((await CareLogRepository(dbA).watchLatestByFamily().first)!.type, 'diaper');
   });
 
   test('最后写入者胜出，删除能同步，旧版本不会覆盖新版本', () async {

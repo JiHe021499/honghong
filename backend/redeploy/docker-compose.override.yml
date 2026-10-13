@@ -1,0 +1,16 @@
+# 哄哄：在官方 supabase/docker 之上叠加的覆盖
+# - 关掉用不到的 realtime / functions / supavisor（supavisor 还会占用宿主 5432）
+# - 网关和 Studio 只绑 127.0.0.1，由反向代理对外，数据库不映射宿主端口
+services:
+  realtime:
+    profiles: [disabled]
+  functions:
+    profiles: [disabled]
+  supavisor:
+    profiles: [disabled]
+  api-gw:
+    ports: !override
+      - "127.0.0.1:8000:8000"
+  studio:
+    ports: !override
+      - "127.0.0.1:54323:3000"

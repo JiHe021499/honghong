@@ -27,7 +27,11 @@ api.example.com {
 ## 备份
 每日 `pg_dump` + 同步 Storage 目录到另一处对象存储，保留 30 天，并定期演练恢复。
 
-## 实际部署：nc_am（2026-10）
+## 重建
+
+见 `redeploy/RUNBOOK.md` 和 `redeploy/redeploy.sh`（一条命令在干净服务器上全新部署，生成新密钥，执行 0001+0002，设置 GitHub secret）。
+
+## 历史部署：nc_am（2026-10，已确认被入侵，停用；以下密钥全部作废）
 
 - 地址：`https://honghong.hczhw.com`（Cloudflare 代理 → 源站 1Panel OpenResty :80 → `127.0.0.1:8000` Supabase 网关）
 - 目录：`/opt/honghong-supabase`（官方 `supabase/docker`，网关为 envoy），`.env` 权限 600，**密钥只在服务器和 bot 私有存储，不入库**

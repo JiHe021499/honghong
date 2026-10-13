@@ -101,7 +101,7 @@ class FakeCloud implements CloudApi {
     _net();
     for (final r in rows) {
       _check(r['family_id']);
-      s.upsertLww(s.logs, r);
+      s.upsertLww(s.logs, {...r, 'updated_by': uid});
     }
   }
 
@@ -110,7 +110,7 @@ class FakeCloud implements CloudApi {
     _net();
     for (final r in rows) {
       _check(r['family_id']);
-      s.upsertLww(s.cries, r);
+      s.upsertLww(s.cries, {...r, 'updated_by': uid});
     }
   }
 

@@ -198,7 +198,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       ? '这个版本未连接云端，暂不可用'
                       : !research
                           ? '默认关闭。只在 Wi-Fi 下上传标注过的哭声'
-                          : sync.error ?? '已上传 ${sync.uploaded} 条 · 等待上传 ${sync.pendingUploads} 条（仅 Wi-Fi）',
+                          : sync.offline
+                              ? '没有网络，${sync.pendingUploads} 条等待上传，连上 Wi-Fi 后自动继续'
+                              : sync.error ?? '已上传 ${sync.uploaded} 条 · 等待上传 ${sync.pendingUploads} 条（仅 Wi-Fi）',
                   trailing: Switch(value: research, onChanged: cloud ? _toggleResearch : null)),
               if (cloud)
                 tile('删除我的数据', key: const Key('research-delete'), sub: '删除云端上传过的哭声片段和标注', onTap: _deleteResearch),

@@ -53,6 +53,17 @@ android {
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
+
+    packaging {
+        jniLibs {
+            // 压缩 .so（下载包更小；安装时解压到本地）
+            useLegacyPackaging = true
+            // 没用 TFLite GPU 代理，去掉它的原生库
+            excludes += listOf("**/libtensorflowlite_gpu_jni.so")
+            // 只发 arm64（CI 用 --target-platform android-arm64 构建；插件自带的其他架构库在这里去掉）
+            excludes += listOf("lib/x86_64/**", "lib/x86/**", "lib/armeabi-v7a/**")
+        }
+    }
 }
 
 kotlin {

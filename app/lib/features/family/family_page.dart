@@ -8,7 +8,7 @@ import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/hh_widgets.dart';
 import '../../services/cloud/cloud_api.dart';
 import '../../services/cloud/cloud_providers.dart';
-import '../insights/insights_page.dart';
+import 'family_card.dart';
 
 /// 家庭：一个家庭对应一个宝宝。创建者把邀请码给家人，家人输入 6 位码加入，
 /// 之后护理记录、哭声判断和反馈在家人手机间同步（录音不共享）。
@@ -251,14 +251,17 @@ class _FamilyPageState extends ConsumerState<FamilyPage> {
       ),
       const SizedBox(height: 14),
       Row(children: [
-        const HhIcon(AppIcon.checkSmall, size: 18),
+        HhIcon(status.offline || status.error != null ? AppIcon.signalError : AppIcon.checkSmall, size: 18),
         const SizedBox(width: 6),
         Expanded(
           child: Text(
             status.running
                 ? '正在同步…'
+                : status.offline
+                    ? '没有网络${status.pendingFamily > 0 ? '，${status.pendingFamily} 条记录' : '，记录'}已存在本机，联网后自动同步'
                 : status.error ??
-                    (status.lastFamilySync == null ? '还没同步过' : '上次同步 ${DateFormat('M月d日 HH:mm').format(status.lastFamilySync!)}'),
+                    (status.lastFamilySync == null ? '还没同步过' : '上次同步 ${DateFormat('M月d日 HH:mm').format(status.lastFamilySync!)}') +
+                        (status.pendingFamily > 0 ? ' · ${status.pendingFamily} 条待同步' : ''),
             style: TextStyle(fontSize: 12, color: c.sub),
           ),
         ),

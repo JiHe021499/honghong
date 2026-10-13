@@ -21,6 +21,8 @@ class CareLogs extends Table {
   DateTimeColumn get endedAt => dateTime().nullable()(); // 睡眠/喂奶时长
   TextColumn get detail => text().nullable()(); // JSON：奶量、侧别、尿/便等
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  /// 最后修改人（家人同步下来的记录才有，本机写入为空）（schema v4）
+  TextColumn get updatedBy => text().nullable()();
   // 家庭同步（schema v3）：最后修改时间、软删除、待推送
   DateTimeColumn get updatedAt => dateTime().nullable()();
   BoolColumn get deleted => boolean().withDefault(const Constant(false))();
