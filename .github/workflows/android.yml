@@ -119,9 +119,13 @@ jobs:
           ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
           export GIT_SSH_COMMAND="ssh -i ~/.ssh/id_releases -o IdentitiesOnly=yes"
           name=${{ steps.ver.outputs.name }}
-          d=$(mktemp -d) && cp meta.json "honghong-$name.apk" "$d/" && cd "$d"
-          git init -q -b "upload/v$name"
+          # 基于公开仓库 main 建上传分支，这样分支里带着那边的发布工作流
+          d=$(mktemp -d)
+          git clone -q --depth 1 --branch main "git@github.com:$RELEASES_REPO.git" "$d"
+          cp meta.json "honghong-$name.apk" "$d/"
+          cd "$d"
+          git checkout -q -b "upload/v$name"
           git config user.name "honghong-ci" && git config user.email "ci@honghong.invalid"
-          git add -A && git commit -qm "上传 $name"
-          git push -f "git@github.com:$RELEASES_REPO.git" "upload/v$name"
+          git add meta.json "honghong-$name.apk" && git commit -qm "上传 $name"
+          git push -f origin "upload/v$name"
           rm -f ~/.ssh/id_releases
