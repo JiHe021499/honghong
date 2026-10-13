@@ -15,3 +15,4 @@ ml/outputs/
 .DS_Store
 .env
 backend/supabase/docker/.env
+!app/assets/models/yamnet.tflite
