@@ -33,6 +33,7 @@ class CryEventRepository {
           predictionJson: jsonEncode(prediction.toJson()),
           predictorVersion: prediction.predictorVersion,
           autoTriggered: Value(autoTriggered),
+          updatedAt: Value(DateTime.now()),
         ));
     return id;
   }
@@ -43,7 +44,7 @@ class CryEventRepository {
 
   Stream<List<CryEvent>> watchRecent(String babyId, {int limit = 50}) =>
       (_db.select(_db.cryEvents)
-            ..where((e) => e.babyId.equals(babyId))
+            ..where((e) => e.babyId.equals(babyId) & e.deleted.not())
             ..orderBy([(e) => OrderingTerm.desc(e.startedAt)])
             ..limit(limit))
           .watch();
@@ -51,8 +52,8 @@ class CryEventRepository {
   Future<List<CryEvent>> since(String babyId, DateTime from) =>
       (_db.select(_db.cryEvents)
             ..where((e) =>
-                e.babyId.equals(babyId) & e.startedAt.isBiggerOrEqualValue(from)))
+                e.babyId.equals(babyId) & e.deleted.not() & e.startedAt.isBiggerOrEqualValue(from)))
           .get();
 
-  Future<List<CryEvent>> all() => _db.select(_db.cryEvents).get();
+  Future<List<CryEvent>> all() => (_db.select(_db.cryEvents)..where((e) => e.deleted.not())).get();
 }

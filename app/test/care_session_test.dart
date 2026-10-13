@@ -108,7 +108,7 @@ void main() {
     await dir.delete(recursive: true);
   });
 
-  test('迁移 v1 → v2：旧的时间点记录补成已结束，多余未结束睡眠收尾，建唯一索引', () async {
+  test('迁移 v1 → v3：旧的时间点记录补成已结束，多余未结束睡眠收尾，建唯一索引', () async {
     final dir = await Directory.systemTemp.createTemp('hh');
     final file = File('${dir.path}/v1.sqlite');
     // 先建一个 v2 库，再退回成 v1 的样子：删掉索引、user_version=1、写入 v1 风格数据
@@ -125,6 +125,12 @@ void main() {
     await raw('s2', 'sleep', t0.add(const Duration(hours: 1))); // 最新的：保留为进行中
     await fdb.into(fdb.careLogs).insert(CareLogsCompanion.insert(
         id: 's0', babyId: bid, type: 'sleep', startedAt: t0, endedAt: Value(t0.add(const Duration(minutes: 40)))));
+    // v3 新增的同步列也退回去
+    for (final t in ['babies', 'care_logs', 'cry_events']) {
+      for (final c in ['updated_at', 'dirty', if (t != 'babies') 'deleted']) {
+        await fdb.customStatement('ALTER TABLE $t DROP COLUMN $c');
+      }
+    }
     await fdb.customStatement('PRAGMA user_version = 1');
     await fdb.close();
 
@@ -141,7 +147,7 @@ void main() {
     final idx = await fdb.customSelect("SELECT name FROM sqlite_master WHERE type='index' AND name='care_logs_one_active'").get();
     expect(idx, hasLength(1));
     final ver = await fdb.customSelect('PRAGMA user_version').getSingle();
-    expect(ver.data.values.first, 2);
+    expect(ver.data.values.first, 3);
     await fdb.close();
     await dir.delete(recursive: true);
   });

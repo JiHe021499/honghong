@@ -5,6 +5,9 @@ class Babies extends Table {
   TextColumn get nickname => text()();
   DateTimeColumn get birthDate => dateTime()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  // 家庭同步（schema v3）
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+  BoolColumn get dirty => boolean().withDefault(const Constant(false))();
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -18,6 +21,10 @@ class CareLogs extends Table {
   DateTimeColumn get endedAt => dateTime().nullable()(); // 睡眠/喂奶时长
   TextColumn get detail => text().nullable()(); // JSON：奶量、侧别、尿/便等
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  // 家庭同步（schema v3）：最后修改时间、软删除、待推送
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+  BoolColumn get deleted => boolean().withDefault(const Constant(false))();
+  BoolColumn get dirty => boolean().withDefault(const Constant(true))();
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -34,7 +41,11 @@ class CryEvents extends Table {
   TextColumn get predictionJson => text()(); // 排序后的原因与概率
   TextColumn get predictorVersion => text()();
   BoolColumn get autoTriggered => boolean().withDefault(const Constant(false))();
-  TextColumn get syncState => text().withDefault(const Constant('local'))(); // local|pending|synced
+  TextColumn get syncState => text().withDefault(const Constant('local'))(); // 参与改进上传：local|synced
+  // 家庭同步（schema v3）：最后修改时间、软删除、待推送
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+  BoolColumn get deleted => boolean().withDefault(const Constant(false))();
+  BoolColumn get dirty => boolean().withDefault(const Constant(true))();
   @override
   Set<Column> get primaryKey => {id};
 }

@@ -164,7 +164,7 @@ abstract class CryPredictor {
 
 - 设置中"参与改进"开关，开启时展示说明并记录同意时间；关闭即停止上传，并可一键删除云端数据。
 - 匿名登录（Supabase Anonymous Auth）获得设备 ID，不收集手机号、姓名、生日（只传月龄）。
-- 后台任务只在 Wi-Fi + 充电/电量充足时上传 `syncState = pending` 的事件：先传片段到 Storage `cry-clips/{device_id}/{event_id}.wav`，再 upsert 事件和反馈；成功后标记 `synced`。以本地 uuid 作主键，重复上传是幂等的。
+- 只在 Wi-Fi 下上传未传过的事件（片段裁到 30 秒以内）：先传片段到 Storage `cry-clips/{device_id}/{event_id}.wav`，再 upsert 事件和反馈；成功后标记 `synced`。以本地 uuid 作主键，重复上传是幂等的。
 - 只上传有反馈的事件（无标注的样本价值低）。
 
 ### Postgres 表（`backend/supabase/migrations/0001_init.sql`）
@@ -176,6 +176,19 @@ abstract class CryPredictor {
 - `model_versions` 登录设备只读，写入只能用 service_role（训练端）。
 - Storage：`cry-clips` 私有，路径第一级必须是自己的 uid；`models` 只读。
 - service_role key 只放在服务器和训练机，绝不进 App。
+
+### 家庭共享（`backend/supabase/migrations/0002_family.sql`）
+
+交互设计见 `docs/design/family-sharing.md`。
+
+- 表：`families`、`family_members`（`unique(user_id)`：一台设备一个家庭；角色 owner/member）、`family_invites`（6 位码，字母表去掉 I/O/0/1，24 小时有效）、`shared_babies`（每个家庭一个宝宝）、`shared_care_logs`、`shared_cry_events`（只含判断和反馈，不含录音）。
+- 每张共享表有 `updated_at`（客户端修改时间，用于最后写入者胜出）、`deleted`（软删除）、`server_updated_at`（触发器写入，作为增量拉取游标）。
+- RLS：`is_family_member(family_id)`（security definer，避免策略递归）决定读写；成员只能改自己的称呼/头像；不允许硬删除。
+- RPC：`create_family`、`join_family(code)`、`refresh_invite`、`leave_family`（owner 退出自动交接给最早加入的成员，最后一人退出则解散并删除共享数据）、`remove_member`（仅 owner）、`push_care_logs/push_cry_events/push_baby`（security invoker，受 RLS 约束，`updated_at` 不旧于服务器才覆盖）、`delete_my_research_data`。
+- 本地（drift schema v3）：`babies/care_logs/cry_events` 增加 `updated_at`、`dirty`（待推送）、`deleted`；仓库层所有写操作刷新 `updated_at` 并置 `dirty`，查询过滤 `deleted`。
+- App：`lib/services/cloud/`：`CloudApi`（接口）/ `SupabaseCloudApi` / `FamilySync`（推送 dirty → 按游标拉取 → LWW 合并）/ `ResearchUploader` / `SyncCoordinator`（启动、回前台、数据变化防抖、失败退避）。
+- 配置：`--dart-define=SUPABASE_URL=… --dart-define=SUPABASE_ANON_KEY=…`（CI 从仓库 secret 注入）；为空时 App 完全离线。
+- 本地验证：`backend/supabase/tests/run_local_rls_test.sh`（临时 Postgres 模拟 Supabase 角色，跑 0001+0002 和家庭 RLS 用例）。
 
 ## 10. 第三阶段：模型管线
 

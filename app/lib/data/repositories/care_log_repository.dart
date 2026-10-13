@@ -25,6 +25,7 @@ class CareLogRepository {
           startedAt: start,
           endedAt: Value(endedAt ?? start),
           detail: Value(detail),
+          updatedAt: Value(DateTime.now()),
         ));
     return id;
   }
@@ -42,6 +43,7 @@ class CareLogRepository {
             babyId: babyId,
             type: type.name,
             startedAt: at ?? DateTime.now(),
+            updatedAt: Value(DateTime.now()),
           ));
       return byId(id).then((v) => v!);
     });
@@ -50,7 +52,7 @@ class CareLogRepository {
   /// 点"结束"：停止计时（写入结束时间），之后可在底部面板里微调或"继续"。
   Future<void> stopSession(String id, {DateTime? at}) =>
       (_db.update(_db.careLogs)..where((l) => l.id.equals(id)))
-          .write(CareLogsCompanion(endedAt: Value(at ?? DateTime.now())));
+          .write(CareLogsCompanion(endedAt: Value(at ?? DateTime.now()), updatedAt: Value(DateTime.now()), dirty: const Value(true)));
 
   /// 点"继续"：撤销结束，回到进行中（开始时间不变）。
   Future<void> resumeSession(String id) async {
@@ -60,7 +62,7 @@ class CareLogRepository {
     final other = await activeSession(log.babyId, type);
     if (other != null && other.id != id) return; // 已经开了新的，不覆盖
     await (_db.update(_db.careLogs)..where((l) => l.id.equals(id)))
-        .write(const CareLogsCompanion(endedAt: Value(null)));
+        .write(CareLogsCompanion(endedAt: const Value(null), updatedAt: Value(DateTime.now()), dirty: const Value(true)));
   }
 
   /// 保存记录：按微调后的时长写结束时间，并写入细节。
@@ -71,7 +73,9 @@ class CareLogRepository {
     await (_db.update(_db.careLogs)..where((l) => l.id.equals(id))).write(
         CareLogsCompanion(
             endedAt: Value(log.startedAt.add(duration)),
-            detail: Value(detail?.encode())));
+            detail: Value(detail?.encode()),
+            updatedAt: Value(DateTime.now()),
+            dirty: const Value(true)));
   }
 
   /// 换尿布：一点即记，类型先记为"未分类"
@@ -81,23 +85,24 @@ class CareLogRepository {
 
   Future<void> updateDetail(String id, CareDetail detail) =>
       (_db.update(_db.careLogs)..where((l) => l.id.equals(id)))
-          .write(CareLogsCompanion(detail: Value(detail.encode())));
+          .write(CareLogsCompanion(detail: Value(detail.encode()), updatedAt: Value(DateTime.now()), dirty: const Value(true)));
 
   Future<CareLog?> byId(String id) =>
-      (_db.select(_db.careLogs)..where((l) => l.id.equals(id)))
+      (_db.select(_db.careLogs)..where((l) => l.id.equals(id) & l.deleted.not()))
           .getSingleOrNull();
 
   Future<CareLog?> activeSession(String babyId, CareLogType type) =>
       (_db.select(_db.careLogs)
             ..where((l) =>
                 l.babyId.equals(babyId) &
+                l.deleted.not() &
                 l.type.equals(type.name) &
                 l.endedAt.isNull()))
           .getSingleOrNull();
 
   /// 所有进行中的记录，最早开始的在前
   Stream<List<CareLog>> watchActive(String babyId) => (_db.select(_db.careLogs)
-        ..where((l) => l.babyId.equals(babyId) & l.endedAt.isNull())
+        ..where((l) => l.babyId.equals(babyId) & l.deleted.not() & l.endedAt.isNull())
         ..orderBy([(l) => OrderingTerm.asc(l.startedAt)]))
       .watch();
 
@@ -107,13 +112,19 @@ class CareLogRepository {
     if (open != null) await stopSession(open.id, at: at);
   }
 
-  Future<void> delete(String id) =>
-      (_db.delete(_db.careLogs)..where((l) => l.id.equals(id))).go();
+  /// 软删除：保留一条 deleted 标记，好同步给家人
+  Future<void> delete(String id) async {
+    final log = await byId(id);
+    if (log == null) return;
+    final now = DateTime.now();
+    await (_db.update(_db.careLogs)..where((l) => l.id.equals(id))).write(CareLogsCompanion(
+        deleted: const Value(true), endedAt: Value(log.endedAt ?? now), updatedAt: Value(now), dirty: const Value(true)));
+  }
 
   /// 每种类型最近一条
   Stream<Map<CareLogType, CareLog>> watchLatestByType(String babyId) {
     return (_db.select(_db.careLogs)
-          ..where((l) => l.babyId.equals(babyId))
+          ..where((l) => l.babyId.equals(babyId) & l.deleted.not())
           ..orderBy([(l) => OrderingTerm.desc(l.startedAt)]))
         .watch()
         .map(_latest);
@@ -121,13 +132,13 @@ class CareLogRepository {
 
   Future<Map<CareLogType, CareLog>> latestByType(String babyId) async =>
       _latest(await (_db.select(_db.careLogs)
-            ..where((l) => l.babyId.equals(babyId))
+            ..where((l) => l.babyId.equals(babyId) & l.deleted.not())
             ..orderBy([(l) => OrderingTerm.desc(l.startedAt)]))
           .get());
 
   Stream<List<CareLog>> watchRecent(String babyId, {int limit = 200}) =>
       (_db.select(_db.careLogs)
-            ..where((l) => l.babyId.equals(babyId))
+            ..where((l) => l.babyId.equals(babyId) & l.deleted.not())
             ..orderBy([(l) => OrderingTerm.desc(l.startedAt)])
             ..limit(limit))
           .watch();
@@ -135,11 +146,11 @@ class CareLogRepository {
   Future<List<CareLog>> since(String babyId, DateTime from) =>
       (_db.select(_db.careLogs)
             ..where((l) =>
-                l.babyId.equals(babyId) & l.startedAt.isBiggerOrEqualValue(from))
+                l.babyId.equals(babyId) & l.deleted.not() & l.startedAt.isBiggerOrEqualValue(from))
             ..orderBy([(l) => OrderingTerm.asc(l.startedAt)]))
           .get();
 
-  Future<List<CareLog>> all() => _db.select(_db.careLogs).get();
+  Future<List<CareLog>> all() => (_db.select(_db.careLogs)..where((l) => l.deleted.not())).get();
 
   static Map<CareLogType, CareLog> _latest(List<CareLog> rows) {
     final m = <CareLogType, CareLog>{};

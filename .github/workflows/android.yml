@@ -78,8 +78,14 @@ jobs:
           printf 'storeFile=app/honghong-release.jks\nstorePassword=%s\nkeyPassword=%s\nkeyAlias=honghong\n' "$PW" "$PW" > android/key.properties
 
       - name: 构建 APK
+        # 云端地址和 anon key 来自仓库 secret（只放 anon key，绝不放 service_role）；
+        # 没配置时为空，App 离线运行，家庭和"参与改进"显示为不可用
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           flutter build apk --release --target-platform android-arm64 \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
             --build-name "${{ steps.ver.outputs.name }}" --build-number "${{ steps.ver.outputs.code }}"
           rm -f android/key.properties android/app/honghong-release.jks
           cp build/app/outputs/flutter-apk/app-release.apk "honghong-${{ steps.ver.outputs.name }}.apk"

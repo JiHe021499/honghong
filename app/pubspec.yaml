@@ -52,6 +52,8 @@ dependencies:
   dio: ^5.11.1
   crypto: ^3.0.7
   open_filex: ^4.7.0
+  supabase_flutter: ^2.18.3
+  connectivity_plus: ^7.3.2
 
 dev_dependencies:
   flutter_test:

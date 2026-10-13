@@ -13,6 +13,7 @@ import '../../features/settings/settings_page.dart';
 import '../../features/update/update_page.dart';
 import '../../features/update/update_providers.dart';
 import '../../services/audio/auto_listen.dart';
+import '../../services/cloud/cloud_providers.dart';
 import '../../services/update/update_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_icon.dart';
@@ -69,6 +70,10 @@ class _TabShellState extends ConsumerState<TabShell> {
   @override
   void initState() {
     super.initState();
+    // 第二阶段：家庭同步和"参与改进"上传（未配置云端时什么都不做）
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(syncCoordinatorProvider).start();
+    });
     // 启动后自动检查更新（每 6 小时最多一次，只在安卓真机上）
     if (inAppUpdateSupported && AutoListenController.enabledInThisEnv) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _autoCheck());

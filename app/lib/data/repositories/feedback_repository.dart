@@ -20,6 +20,9 @@ class FeedbackRepository {
           minutesToSoothe: Value(minutesToSoothe),
           note: Value(note),
         ));
+    // 反馈也要同步给家人，并进入"参与改进"上传队列
+    await (_db.update(_db.cryEvents)..where((e) => e.id.equals(cryEventId)))
+        .write(CryEventsCompanion(updatedAt: Value(DateTime.now()), dirty: const Value(true)));
     return id;
   }
 

@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show BooleanExpressionOperators;
 import 'dart:convert';
 import 'dart:io';
 
@@ -18,8 +19,8 @@ class ExportService {
   Future<Map<String, Object?>> buildJson({DateTime? now}) async {
     String? iso(DateTime? d) => d?.toIso8601String();
     final babies = await _db.select(_db.babies).get();
-    final logs = await _db.select(_db.careLogs).get();
-    final cries = await _db.select(_db.cryEvents).get();
+    final logs = await (_db.select(_db.careLogs)..where((l) => l.deleted.not())).get();
+    final cries = await (_db.select(_db.cryEvents)..where((e) => e.deleted.not())).get();
     final fbs = await _db.select(_db.feedbacks).get();
     Object? js(String? s) {
       if (s == null) return null;
@@ -84,7 +85,7 @@ class ExportService {
     final archive = Archive()
       ..addFile(ArchiveFile.string('data.json', const JsonEncoder.withIndent('  ').convert(json)));
     var n = 0;
-    for (final e in await _db.select(_db.cryEvents).get()) {
+    for (final e in await (_db.select(_db.cryEvents)..where((e) => e.deleted.not())).get()) {
       final path = e.audioPath;
       if (path == null) continue;
       final f = File(path);

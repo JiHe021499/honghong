@@ -17,7 +17,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -27,6 +27,18 @@ class AppDatabase extends _$AppDatabase {
         },
         onUpgrade: (m, from, to) async {
           if (from < 2) await migrateV1ToV2(this);
+          if (from < 3) {
+            await m.addColumn(babies, babies.updatedAt);
+            await m.addColumn(babies, babies.dirty);
+            for (final c in [careLogs.updatedAt, careLogs.deleted, careLogs.dirty]) {
+              await m.addColumn(careLogs, c);
+            }
+            for (final c in [cryEvents.updatedAt, cryEvents.deleted, cryEvents.dirty]) {
+              await m.addColumn(cryEvents, c);
+            }
+            await customStatement('DROP INDEX IF EXISTS care_logs_one_active');
+            await customStatement(activeSessionIndexSql);
+          }
         },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON');
@@ -37,7 +49,7 @@ class AppDatabase extends _$AppDatabase {
 /// 每个宝宝每种类型最多一条进行中的记录（ended_at 为空）。
 const activeSessionIndexSql =
     'CREATE UNIQUE INDEX IF NOT EXISTS care_logs_one_active '
-    'ON care_logs (baby_id, type) WHERE ended_at IS NULL';
+    'ON care_logs (baby_id, type) WHERE ended_at IS NULL AND deleted = 0';
 
 /// v1 → v2：v1 的喂奶/拍嗝/换尿布是"点一下记一个时间点"（ended_at 为空），
 /// v2 起 ended_at 为空表示"进行中"。先把旧的时间点记录补成已结束，
@@ -50,7 +62,8 @@ Future<void> migrateV1ToV2(GeneratedDatabase db) async {
       'SELECT 1 FROM care_logs o WHERE o.baby_id = care_logs.baby_id '
       "AND o.type = 'sleep' AND o.ended_at IS NULL "
       'AND o.started_at > care_logs.started_at)');
-  await db.customStatement(activeSessionIndexSql);
+  await db.customStatement('CREATE UNIQUE INDEX IF NOT EXISTS care_logs_one_active '
+      'ON care_logs (baby_id, type) WHERE ended_at IS NULL');
 }
 
 LazyDatabase _open() => LazyDatabase(() async {
