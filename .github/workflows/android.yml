@@ -1,5 +1,13 @@
 name: Android APK
 
+# 版本号规则：
+# - versionCode = github.run_number（单调递增，同一 App 永远可以覆盖安装）
+# - master 推送：versionName = <pubspec 的 主.次>.<run_number>，渠道 dev（例如 0.1.42）
+# - 打 v* 标签：versionName = 标签去掉 v（例如 v0.2.0 → 0.2.0），渠道 stable
+# 构建后把 APK 和元数据推到公开仓库 honghong-releases 的 upload/<版本> 分支，
+# 由那边的工作流创建 Release 并更新 version.json。
+# 提交信息里带 [强制更新] 或 [force] 时，这个版本会要求所有旧版本必须更新。
+
 on:
   push:
     branches: [master]
@@ -8,11 +16,14 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: android-${{ github.ref }}
   cancel-in-progress: true
+
+env:
+  RELEASES_REPO: JiHe021499/honghong-releases
 
 jobs:
   build:
@@ -22,6 +33,23 @@ jobs:
         working-directory: app
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 计算版本号
+        id: ver
+        run: |
+          base=$(grep -E '^version:' pubspec.yaml | sed -E 's/version: *([0-9]+)\.([0-9]+).*/\1.\2/')
+          code=${{ github.run_number }}
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            name="${GITHUB_REF_NAME#v}"; channel=stable
+          else
+            name="$base.$code"; channel=dev
+          fi
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+          echo "版本 $name（$code，$channel）"
 
       - uses: actions/setup-java@v4
         with:
@@ -39,33 +67,61 @@ jobs:
       - run: dart run build_runner build --delete-conflicting-outputs
       - run: flutter analyze
       - run: flutter test
-      - run: flutter build apk --release --target-platform android-arm64
 
-      - name: 重命名 APK
-        run: cp build/app/outputs/flutter-apk/app-release.apk honghong.apk
+      - name: 写入发布签名
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          PW: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KS" ]; then echo "::error::缺少 ANDROID_KEYSTORE_BASE64"; exit 1; fi
+          echo "$KS" | base64 -d > android/app/honghong-release.jks
+          printf 'storeFile=app/honghong-release.jks\nstorePassword=%s\nkeyPassword=%s\nkeyAlias=honghong\n' "$PW" "$PW" > android/key.properties
+
+      - name: 构建 APK
+        run: |
+          flutter build apk --release --target-platform android-arm64 \
+            --build-name "${{ steps.ver.outputs.name }}" --build-number "${{ steps.ver.outputs.code }}"
+          rm -f android/key.properties android/app/honghong-release.jks
+          cp build/app/outputs/flutter-apk/app-release.apk "honghong-${{ steps.ver.outputs.name }}.apk"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: honghong-apk
-          path: app/honghong.apk
+          name: honghong-${{ steps.ver.outputs.name }}
+          path: app/honghong-${{ steps.ver.outputs.name }}.apk
 
-      - name: 发布滚动预发布 latest-dev
-        if: github.ref == 'refs/heads/master'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: 生成发布元数据
         run: |
-          git tag -f latest-dev
-          git push -f origin latest-dev
-          if gh release view latest-dev >/dev/null 2>&1; then
-            gh release upload latest-dev honghong.apk --clobber
-            gh release edit latest-dev --prerelease --notes "开发版，构建自 ${GITHUB_SHA::7}（$(date -u +%Y-%m-%dT%H:%MZ)）"
+          name=${{ steps.ver.outputs.name }}
+          apk="honghong-$name.apk"
+          prev=$(curl -fsSL "https://raw.githubusercontent.com/$RELEASES_REPO/main/version.json" | jq -r '.commit // empty' 2>/dev/null || true)
+          if [ -n "$prev" ] && git cat-file -e "$prev^{commit}" 2>/dev/null; then
+            log=$(git log --no-merges --format='- %s' "$prev..HEAD" -- . | head -30)
           else
-            gh release create latest-dev honghong.apk --prerelease --title "开发版 latest-dev" \
-              --notes "开发版，构建自 ${GITHUB_SHA::7}"
+            log=$(git log --no-merges --format='- %s' -10 -- .)
           fi
+          [ -n "$log" ] || log="- 例行构建"
+          force=false
+          if echo "$log" | grep -qiE '\[(强制更新|force)\]'; then force=true; fi
+          min=0; $force && min=${{ steps.ver.outputs.code }}
+          jq -n --arg name "$name" --argjson code ${{ steps.ver.outputs.code }} --arg channel ${{ steps.ver.outputs.channel }} \
+            --arg apk "$apk" --arg sha "$(sha256sum "$apk" | cut -d' ' -f1)" --argjson size "$(stat -c%s "$apk")" \
+            --arg log "$log" --argjson force $force --argjson min $min --arg commit "$GITHUB_SHA" \
+            --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{versionName:$name, versionCode:$code, channel:$channel, apkName:$apk, sha256:$sha, size:$size,
+              changelog:$log, force:$force, minSupportedVersionCode:$min, commit:$commit, publishedAt:$at}' > meta.json
+          cat meta.json
 
-      - name: 发布正式版
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: 推送到 honghong-releases
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "$GITHUB_REF_NAME" honghong.apk --title "$GITHUB_REF_NAME" --generate-notes
+          DEPLOY_KEY: ${{ secrets.RELEASES_DEPLOY_KEY }}
+        run: |
+          mkdir -p ~/.ssh && echo "$DEPLOY_KEY" > ~/.ssh/id_releases && chmod 600 ~/.ssh/id_releases
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/id_releases -o IdentitiesOnly=yes"
+          name=${{ steps.ver.outputs.name }}
+          d=$(mktemp -d) && cp meta.json "honghong-$name.apk" "$d/" && cd "$d"
+          git init -q -b "upload/v$name"
+          git config user.name "honghong-ci" && git config user.email "ci@honghong.invalid"
+          git add -A && git commit -qm "上传 $name"
+          git push -f "git@github.com:$RELEASES_REPO.git" "upload/v$name"
+          rm -f ~/.ssh/id_releases
