@@ -22,7 +22,7 @@ void main() {
     await tester.tap(find.byKey(const Key('quick-feed')));
     await settle(tester);
     expect(find.byKey(const Key('running-feed')), findsOneWidget);
-    expect(find.text('🍼 喂奶中'), findsOneWidget);
+    expect(find.textContaining('喂奶中', findRichText: true), findsWidgets);
     expect(find.text('结束'), findsOneWidget);
     expect(find.textContaining('点「结束」保存'), findsOneWidget);
 
@@ -30,7 +30,7 @@ void main() {
     await tester.tap(find.byKey(const Key('end-feed')));
     await settle(tester, 10);
     expect(find.text('喂奶结束'), findsOneWidget);
-    expect(find.text('✓ 已停止计时'), findsOneWidget);
+    expect(find.textContaining('已停止计时', findRichText: true), findsOneWidget);
 
     // 继续喂 → 回到进行中
     await tester.tap(find.text('继续喂'));
@@ -92,7 +92,7 @@ void main() {
       await repo.startSession(id, CareLogTypeX.sleep, at: DateTime.now().subtract(const Duration(minutes: 20)));
     });
     expect(find.byKey(const Key('running-sleep')), findsOneWidget);
-    expect(find.text('😴 睡觉中'), findsOneWidget);
+    expect(find.textContaining('睡觉中', findRichText: true), findsWidgets);
     expect(find.textContaining('20:0'), findsWidgets);
     await unmount(tester);
     await tester.runAsync(db.close);

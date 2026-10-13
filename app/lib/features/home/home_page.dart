@@ -9,6 +9,7 @@ import '../../core/prefs.dart';
 import '../../core/providers.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/hh_widgets.dart';
 import '../../data/db/app_database.dart';
 import '../../domain/models/care_detail.dart';
@@ -146,7 +147,7 @@ class _Header extends ConsumerWidget {
           height: 40,
           alignment: Alignment.center,
           decoration: BoxDecoration(color: c.night ? c.card : c.peachL, shape: BoxShape.circle),
-          child: const Text('👶', style: TextStyle(fontSize: 22)),
+          child: const HhIcon(AppIcon.avatarBaby, size: 30),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -168,7 +169,7 @@ class _Header extends ConsumerWidget {
               shape: BoxShape.circle,
               boxShadow: c.night ? null : const [BoxShadow(color: Color(0x0D000000), blurRadius: 8, offset: Offset(0, 2))],
             ),
-            child: Text(c.night ? '☀️' : '🌙', style: const TextStyle(fontSize: 18)),
+            child: HhIcon(c.night ? AppIcon.dayMode : AppIcon.nightMode, size: 24),
           ),
         ),
       ]),
@@ -211,7 +212,8 @@ class _StatusBar extends ConsumerWidget {
           Expanded(
             child: Text.rich(
               TextSpan(style: base, children: [
-                TextSpan(text: '${c.night ? '' : t.emoji}${t.runningLabel} · ${c.night ? '' : '已进行 '}'),
+                if (!c.night) iconSpan(t.icon, size: 18),
+                TextSpan(text: '${t.runningLabel} · ${c.night ? '' : '已进行 '}'),
                 TextSpan(text: formatTimer(now.difference(first.startedAt)), style: emStyle),
                 if (!c.night) const TextSpan(text: ' · 点「结束」保存'),
                 if (active.length > 1) TextSpan(text: '  +${active.length - 1}'),
@@ -232,7 +234,8 @@ class _StatusBar extends ConsumerWidget {
     final spans = <InlineSpan>[];
     if (feed != null) {
       spans.addAll([
-        const TextSpan(text: '🍼 上次喂奶 '),
+        iconSpan(AppIcon.careFeed),
+        const TextSpan(text: '上次喂奶 '),
         TextSpan(text: _ago(now.difference(feed.startedAt)), style: emStyle),
         const TextSpan(text: ' 前'),
       ]);
@@ -240,11 +243,12 @@ class _StatusBar extends ConsumerWidget {
     if (sleep?.endedAt != null) {
       if (spans.isNotEmpty) spans.add(const TextSpan(text: ' · '));
       spans.addAll([
-        const TextSpan(text: '😴 已醒 '),
+        iconSpan(AppIcon.careAwake),
+        const TextSpan(text: '已醒 '),
         TextSpan(text: _ago(now.difference(sleep!.endedAt!)), style: emStyle),
       ]);
     }
-    if (spans.isEmpty) spans.add(const TextSpan(text: '👋 还没有记录，喂奶、睡觉点一下就开始计时'));
+    if (spans.isEmpty) spans.addAll([iconSpan(AppIcon.waveHello), const TextSpan(text: '还没有记录，喂奶、睡觉点一下就开始计时')]);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(color: c.statusBg, borderRadius: BorderRadius.circular(16)),
@@ -371,7 +375,7 @@ class _QuickGrid extends ConsumerWidget {
         color: done ? c.greenL : null,
         border: done ? const Color(0xFFA8D5B5) : null,
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(t.emoji, style: TextStyle(fontSize: 26, color: c.night ? const Color(0xFF9A5046) : null)),
+          HhIcon(t.icon, size: c.night ? 36 : 34),
           const SizedBox(height: 4),
           Text(done ? '已记' : t.label, style: TextStyle(fontSize: c.night ? 16 : 13, fontWeight: FontWeight.w600, color: c.night ? c.ink : c.ink)),
         ]),
@@ -392,7 +396,7 @@ class _QuickGrid extends ConsumerWidget {
               color: c.night ? c.runBg : null,
               border: c.runBorder,
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Text('${t.emoji} ${t.runningLabel}', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: c.night ? c.peachDeep : c.peachDeep)),
+                Text.rich(TextSpan(children: [iconSpan(t.icon, size: 18), TextSpan(text: t.runningLabel)]), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: c.peachDeep)),
                 const SizedBox(height: 4),
                 Text(formatTimer(elapsed),
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: c.night ? const Color(0xFFF0C0B4) : c.ink, fontFeatures: const [FontFeature.tabularFigures()])),
@@ -409,7 +413,7 @@ class _QuickGrid extends ConsumerWidget {
               border: c.endBg,
               shadow: !c.night,
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.stop_rounded, size: 30, color: c.endInk),
+                const HhIcon(AppIcon.stop, size: 30, dim: false),
                 Text('结束', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: c.endInk)),
               ]),
             ),
@@ -574,7 +578,7 @@ class _TimelineRow extends ConsumerWidget {
           border: highlight || last ? null : Border(bottom: BorderSide(color: c.line)),
         ),
         child: Row(children: [
-          EmojiTile(t.emoji, bg: typeTint(c, log.type)),
+          IconTile(t.icon, bg: typeTint(c, log.type)),
           const SizedBox(width: 12),
           Flexible(
             child: Text(live ? t.runningLabel : describeLog(t, log.startedAt, log.endedAt, log.detail),
@@ -620,7 +624,7 @@ class _DiaperToast extends StatelessWidget {
           boxShadow: const [BoxShadow(color: Color(0x263C2814), blurRadius: 24, offset: Offset(0, 8))],
         ),
         child: Row(children: [
-          const Text('🧷', style: TextStyle(fontSize: 22)),
+          const HhIcon(AppIcon.careDiaper, size: 30),
           const SizedBox(width: 10),
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('已记下换尿布', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: c.ink)),
@@ -646,7 +650,8 @@ class _VoiceHint extends StatelessWidget {
       ),
       child: Text.rich(
         TextSpan(children: [
-          const TextSpan(text: '🎙️ 语音操作 '),
+          iconSpan(AppIcon.voice, size: 22),
+          const TextSpan(text: '语音操作 '),
           TextSpan(text: '即将支持', style: TextStyle(fontWeight: FontWeight.w700, color: c.peachDeep)),
         ]),
         textAlign: TextAlign.center,

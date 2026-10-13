@@ -12,6 +12,7 @@ import 'package:record/record.dart';
 import '../../core/providers.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/hh_widgets.dart';
 import '../../services/audio/auto_listen.dart';
 
@@ -136,7 +137,7 @@ class _RecordingPageState extends ConsumerState<RecordingPage> {
               child: Stack(alignment: Alignment.center, children: [
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: _CircleIcon(icon: Icons.close, onTap: _cancel),
+                  child: _CircleIcon(icon: AppIcon.close, onTap: _cancel),
                 ),
                 Text('正在听宝宝哭声', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: c.ink)),
               ]),
@@ -199,7 +200,7 @@ class _RecordingPageState extends ConsumerState<RecordingPage> {
 
 class _CircleIcon extends StatelessWidget {
   const _CircleIcon({required this.icon, required this.onTap});
-  final IconData icon;
+  final AppIcon icon;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
@@ -214,7 +215,7 @@ class _CircleIcon extends StatelessWidget {
           shape: BoxShape.circle,
           boxShadow: c.night ? null : const [BoxShadow(color: Color(0x14000000), blurRadius: 10, offset: Offset(0, 2))],
         ),
-        child: Icon(icon, size: 20, color: c.ink),
+        child: Center(child: HhIcon(icon, size: 24)),
       ),
     );
   }
@@ -222,9 +223,9 @@ class _CircleIcon extends StatelessWidget {
 
 /// 结果页、反馈页共用的圆形返回按钮
 class CircleBack extends StatelessWidget {
-  const CircleBack({super.key, required this.onTap, this.icon = Icons.chevron_left});
+  const CircleBack({super.key, required this.onTap, this.icon = AppIcon.chevronLeft});
   final VoidCallback onTap;
-  final IconData icon;
+  final AppIcon icon;
   @override
   Widget build(BuildContext context) => _CircleIcon(icon: icon, onTap: onTap);
 }

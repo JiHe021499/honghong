@@ -7,6 +7,7 @@ import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:honghong/core/widgets/app_icon.dart';
 import 'package:honghong/data/db/app_database.dart';
 import 'package:honghong/data/repositories/care_log_repository.dart';
 import 'package:honghong/data/repositories/cry_event_repository.dart';
@@ -89,13 +90,27 @@ void main() {
 
   Future<void> shot(WidgetTester tester, String name) async {
     await settle(tester, 8);
+    // 等屏幕上所有图片解码完（测试里图片解码是真异步的）
+    await tester.runAsync(() async {
+      for (final e in find.byType(Image).evaluate()) {
+        await precacheImage((e.widget as Image).image, e);
+      }
+    });
+    await tester.pump();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('$name.png'));
   }
 
   testWidgets('护理记录流程截图', (tester) async {
     await phone(tester);
     final db = await pumpApp(tester, seed: _seed, prefs: {'auto_listen': true});
-    await tester.runAsync(() async => precacheImage(const AssetImage('assets/brand/mark-1024.png'), tester.element(find.byType(Scaffold).first)));
+    // 图片在测试里异步解码，先把所有图标预加载，截图才不会缺图
+    await tester.runAsync(() async {
+      final ctx = tester.element(find.byType(Scaffold).first);
+      await precacheImage(const AssetImage('assets/brand/mark-1024.png'), ctx);
+      for (final i in AppIcon.values) {
+        await precacheImage(AssetImage(i.asset), ctx);
+      }
+    });
     await shot(tester, 'home-01-idle');
 
     await tester.tap(find.byKey(const Key('quick-feed')));

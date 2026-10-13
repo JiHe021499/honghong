@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/providers.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/hh_widgets.dart';
 import '../../domain/insights.dart';
 import '../../domain/models/cause_ui.dart';
@@ -14,8 +15,9 @@ final feedbackCountProvider = FutureProvider<int>((ref) => ref.watch(feedbackRep
 
 /// 反馈页的一个选项；cause 为 null 表示"不确定"
 class _Opt {
-  const _Opt(this.emoji, this.label, this.cause);
-  final String emoji, label;
+  const _Opt(this.icon, this.label, this.cause);
+  final AppIcon icon;
+  final String label;
   final CryCause? cause;
 }
 
@@ -30,8 +32,8 @@ class FeedbackPage extends ConsumerStatefulWidget {
 
 class _FeedbackPageState extends ConsumerState<FeedbackPage> {
   static final _opts = [
-    for (final c in [CryCause.hungry, CryCause.sleepy, CryCause.gas, CryCause.diaper, CryCause.holdMe]) _Opt(c.emoji, c.action, c),
-    const _Opt('🤷', '不确定', null),
+    for (final c in [CryCause.hungry, CryCause.sleepy, CryCause.gas, CryCause.diaper, CryCause.holdMe]) _Opt(c.icon, c.action, c),
+    const _Opt(AppIcon.causeUnsure, '不确定', null),
   ];
   int? _sel;
   bool _saving = false;
@@ -60,7 +62,7 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 40, 20, 16),
           children: [
-            const Center(child: Text('🥰', style: TextStyle(fontSize: 64))),
+            const Center(child: HhIcon(AppIcon.soothed, size: 84)),
             const SizedBox(height: 14),
             Text('辛苦啦，宝宝不哭了', textAlign: TextAlign.center, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: c.ink)),
             const SizedBox(height: 6),
@@ -86,7 +88,7 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage> {
                         boxShadow: [BoxShadow(color: c.shadow, blurRadius: 10, offset: const Offset(0, 3))],
                       ),
                       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Text(_opts[i].emoji, style: const TextStyle(fontSize: 30)),
+                        HhIcon(_opts[i].icon, size: 40),
                         const SizedBox(height: 6),
                         Text(_opts[i].label, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: c.ink)),
                       ]),

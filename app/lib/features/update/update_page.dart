@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/hh_widgets.dart';
 import '../../services/update/update_service.dart';
 import '../cry/recording_page.dart';
@@ -188,17 +189,17 @@ class _UpdatePageState extends ConsumerState<UpdatePage> {
 
     Widget body;
     if (!inAppUpdateSupported) {
-      body = _center(c, '📱', 'iOS 暂不支持应用内更新', '请通过 TestFlight 或 App Store 更新');
+      body = _center(c, AppIcon.phone, 'iOS 暂不支持应用内更新', '请通过 TestFlight 或 App Store 更新');
     } else if (_phase == _Phase.checking) {
       body = const Padding(padding: EdgeInsets.all(60), child: Center(child: CircularProgressIndicator()));
     } else if (_phase == _Phase.error) {
       body = Column(children: [
-        _center(c, '📡', '检查更新失败', _error ?? ''),
+        _center(c, AppIcon.signalError, '检查更新失败', _error ?? ''),
         HhButton(label: '重试', onPressed: _runCheck),
       ]);
     } else if (_phase == _Phase.upToDate) {
       body = Column(children: [
-        _center(c, '✅', '已经是最新版本', '当前 ${current?.version ?? ''}（${current?.buildNumber ?? ''}）'),
+        _center(c, AppIcon.checkDone, '已经是最新版本', '当前 ${current?.version ?? ''}（${current?.buildNumber ?? ''}）'),
         HhButton(label: '再检查一次', primary: false, onPressed: _runCheck),
       ]);
     } else {
@@ -208,7 +209,7 @@ class _UpdatePageState extends ConsumerState<UpdatePage> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               _ver(c, '当前版本', current == null ? '…' : '${current.version}（${current.buildNumber}）'),
-              Icon(Icons.arrow_forward_rounded, color: c.sub),
+              const HhIcon(AppIcon.arrowForward, size: 24),
               _ver(c, '新版本', '${info!.versionName}（${info.versionCode}）', highlight: true),
             ]),
             const SizedBox(height: 12),
@@ -301,10 +302,10 @@ class _UpdatePageState extends ConsumerState<UpdatePage> {
         ]),
       );
 
-  Widget _center(Hh c, String emoji, String title, String sub) => Padding(
+  Widget _center(Hh c, AppIcon icon, String title, String sub) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 24),
         child: Column(children: [
-          Text(emoji, style: const TextStyle(fontSize: 44)),
+          HhIcon(icon, size: 60),
           const SizedBox(height: 10),
           Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: c.ink)),
           const SizedBox(height: 6),

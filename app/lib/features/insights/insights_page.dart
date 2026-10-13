@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/hh_widgets.dart';
 import '../../domain/insights.dart';
 import '../../domain/models/care_log_type.dart';
@@ -93,13 +94,13 @@ class InsightsPage extends ConsumerWidget {
 
   List<Widget> _cards(BuildContext context, InsightsData d) {
     final c = context.hh;
-    Widget ins(String emoji, String title, String sub, [Widget? extra]) => Padding(
+    Widget ins(AppIcon icon, String title, String sub, [Widget? extra]) => Padding(
           padding: const EdgeInsets.only(bottom: 14),
           child: HhCard(
             padding: const EdgeInsets.all(20),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(emoji, style: const TextStyle(fontSize: 28)),
+                HhIcon(icon, size: 36),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -121,7 +122,7 @@ class InsightsPage extends ConsumerWidget {
     // 1 闹的时段
     final maxCount = d.cries.counts.fold<int>(0, (a, b) => a > b ? a : b);
     cards.add(ins(
-      '🌇',
+      AppIcon.insightDusk,
       peak == null ? '闹的时段：还在学习' : '通常${_period(peak)} ${_h12(peak)} 点前后闹${peak >= 15 || peak < 6 ? '觉' : ''}',
       peak == null ? '用"宝宝在哭"记下几次哭声后，这里会显示他通常几点闹' : '可以在 ${_h12((peak + 23) % 24)}:30 左右提前调暗环境、开始哄睡',
       Padding(
@@ -159,32 +160,32 @@ class InsightsPage extends ConsumerWidget {
     final t = d.trend;
     if (t.recent != null && t.before != null) {
       final diff = t.recent! - t.before!;
-      cards.add(ins('🍼', diff.abs() < .2 ? '吃奶间隔很稳定' : (diff > 0 ? '吃奶间隔在变长' : '吃奶间隔在变短'),
+      cards.add(ins(AppIcon.careFeed, diff.abs() < .2 ? '吃奶间隔很稳定' : (diff > 0 ? '吃奶间隔在变长' : '吃奶间隔在变短'),
           '平均 ${h1(t.before!)} 小时 → ${h1(t.recent!)} 小时${diff > 0 ? '，属于正常成长变化' : ''}'));
     } else if ((t.recent ?? t.before) != null) {
-      cards.add(ins('🍼', '平均 ${h1((t.recent ?? t.before)!)} 小时吃一次奶', '再记几天，就能看出间隔是变长还是变短'));
+      cards.add(ins(AppIcon.careFeed, '平均 ${h1((t.recent ?? t.before)!)} 小时吃一次奶', '再记几天，就能看出间隔是变长还是变短'));
     } else {
-      cards.add(ins('🍼', '吃奶间隔：还在学习', '记两次以上喂奶后，这里会显示平均间隔'));
+      cards.add(ins(AppIcon.careFeed, '吃奶间隔：还在学习', '记两次以上喂奶后，这里会显示平均间隔'));
     }
 
     // 3 最常见哭因
     if (d.causes.isNotEmpty) {
       final top = d.causes.first;
       final rest = d.causes.skip(1).take(2).map((e) => '${e.$1.label.split('/').first}（${(e.$2 * 100).round()}%）').join('与');
-      cards.add(ins('🎯', '最常见的哭因：${top.$1.label.split('/').first}（${(top.$2 * 100).round()}%）',
+      cards.add(ins(AppIcon.insightTarget, '最常见的哭因：${top.$1.label.split('/').first}（${(top.$2 * 100).round()}%）',
           [if (rest.isNotEmpty) '其次是$rest', if (!d.fromFeedback) '（来自判断结果，多点反馈会更准）'].join(' ')));
     } else {
-      cards.add(ins('🎯', '最常见的哭因：还在学习', '每次哄好后点一下"是什么起作用了"，这里就会越来越准'));
+      cards.add(ins(AppIcon.insightTarget, '最常见的哭因：还在学习', '每次哄好后点一下"是什么起作用了"，这里就会越来越准'));
     }
 
     // 4 睡眠
     if (d.sleepHours != null) {
-      cards.add(ins('😴', '平均每天记录睡眠 ${h1(d.sleepHours!)} 小时', '按已结束的睡觉记录统计，漏记会偏少'));
+      cards.add(ins(AppIcon.careSleep, '平均每天记录睡眠 ${h1(d.sleepHours!)} 小时', '按已结束的睡觉记录统计，漏记会偏少'));
     }
 
     // 5 猜中率（核心指标）
     if (d.agreement.total > 0) {
-      cards.add(ins('✅', '哄哄猜中率 ${(d.agreement.hits * 100 / d.agreement.total).round()}%',
+      cards.add(ins(AppIcon.checkDone, '哄哄猜中率 ${(d.agreement.hits * 100 / d.agreement.total).round()}%',
           '第一名和你的反馈一致 ${d.agreement.hits} / ${d.agreement.total} 次'));
     }
     return cards;
@@ -200,12 +201,12 @@ class FamilyCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.hh;
-    Widget av(String e, Color bg) => Container(
+    Widget av(AppIcon e, Color bg) => Container(
           width: 40,
           height: 40,
           alignment: Alignment.center,
           decoration: BoxDecoration(color: bg, shape: BoxShape.circle, border: Border.all(color: c.card, width: 3)),
-          child: Text(e, style: const TextStyle(fontSize: 18)),
+          child: HhIcon(e, size: 28),
         );
     return HhCard(
       padding: const EdgeInsets.all(20),
@@ -214,9 +215,9 @@ class FamilyCard extends StatelessWidget {
           width: 100,
           height: 40,
           child: Stack(children: [
-            av('👩', c.peachL),
-            Positioned(left: 30, child: av('👨', c.blueL)),
-            Positioned(left: 60, child: av('👵', c.greenL)),
+            av(AppIcon.avatarMom, c.peachL),
+            Positioned(left: 30, child: av(AppIcon.avatarDad, c.blueL)),
+            Positioned(left: 60, child: av(AppIcon.avatarGrandma, c.greenL)),
           ]),
         ),
         const SizedBox(width: 16),

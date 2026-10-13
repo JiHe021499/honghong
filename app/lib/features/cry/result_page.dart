@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/providers.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/hh_widgets.dart';
 import '../../domain/models/cause_ui.dart';
 import '../../domain/models/cry_cause.dart';
@@ -66,7 +67,7 @@ class ResultPage extends ConsumerWidget {
                         child: Row(children: [
                           SizedBox(
                             width: 86,
-                            child: Text('${top[i].cause.emoji} ${top[i].cause.label.split('/').first}',
+                            child: Text.rich(TextSpan(children: [iconSpan(top[i].cause.icon, size: 20), TextSpan(text: top[i].cause.label.split('/').first)]),
                                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: c.ink)),
                           ),
                           Expanded(
@@ -88,7 +89,8 @@ class ResultPage extends ConsumerWidget {
                       ),
                     const SizedBox(height: 8),
                     Text.rich(TextSpan(children: [
-                      const TextSpan(text: '💡 为什么这么猜：'),
+                      iconSpan(AppIcon.tip, size: 18),
+                      const TextSpan(text: '为什么这么猜：'),
                       TextSpan(text: first.reason, style: TextStyle(fontWeight: FontWeight.w700, color: c.ink)),
                       TextSpan(text: '，${first.cause == CryCause.hungry ? '和宝宝以往饿的时候相似' : '结合宝宝以往的反馈综合判断'}。'),
                     ]), style: TextStyle(fontSize: 14, color: c.sub, height: 1.6)),
@@ -102,7 +104,7 @@ class ResultPage extends ConsumerWidget {
                     gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFFE7DB), Color(0xFFFFF1E8)]),
                   ),
                   child: Row(children: [
-                    Text(first.cause.emoji, style: const TextStyle(fontSize: 34)),
+                    HhIcon(first.cause.icon, size: 44),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -160,8 +162,8 @@ class _CauseTileState extends State<_CauseTile> {
         onTap: () => setState(() => open = !open),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Expanded(child: Text('${cause.emoji} ${cause.title} · ${widget.pct}%', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: c.ink))),
-            Icon(open ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: c.sub),
+            Expanded(child: Text.rich(TextSpan(children: [iconSpan(cause.icon, size: 20), TextSpan(text: '${cause.title} · ${widget.pct}%')]), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: c.ink))),
+            HhIcon(open ? AppIcon.chevronUp : AppIcon.chevronDown, size: 22),
           ]),
           if (open) ...[
             const SizedBox(height: 8),

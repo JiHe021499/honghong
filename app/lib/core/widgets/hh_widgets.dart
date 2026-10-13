@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import 'app_icon.dart';
 
 /// 白色圆角卡片（设计稿 .card）
 class HhCard extends StatelessWidget {
@@ -190,10 +191,10 @@ class SheetGrab extends StatelessWidget {
       );
 }
 
-/// 圆角方形 emoji 图标
-class EmojiTile extends StatelessWidget {
-  const EmojiTile(this.emoji, {super.key, this.size = 30, this.bg, this.radius = 10, this.fontSize = 16});
-  final String emoji;
+/// 圆角方形底 + 手绘图标
+class IconTile extends StatelessWidget {
+  const IconTile(this.icon, {super.key, this.size = 30, this.bg, this.radius = 10, this.fontSize = 16});
+  final AppIcon icon;
   final double size;
   final Color? bg;
   final double radius;
@@ -204,7 +205,7 @@ class EmojiTile extends StatelessWidget {
         height: size,
         alignment: Alignment.center,
         decoration: BoxDecoration(color: bg ?? context.hh.peachL, borderRadius: BorderRadius.circular(radius)),
-        child: Text(emoji, style: TextStyle(fontSize: fontSize)),
+        child: HhIcon(icon, size: fontSize * 1.4),
       );
 }
 

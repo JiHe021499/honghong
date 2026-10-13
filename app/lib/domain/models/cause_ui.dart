@@ -1,13 +1,14 @@
+import '../../core/widgets/app_icon.dart';
 import 'cry_cause.dart';
 
 /// 结果页、反馈页里每个原因的展示文案
 extension CryCauseUi on CryCause {
-  String get emoji => switch (this) {
-        CryCause.hungry => '🍼',
-        CryCause.sleepy => '😴',
-        CryCause.gas => '🫧',
-        CryCause.diaper => '🧷',
-        CryCause.holdMe => '🤗',
+  AppIcon get icon => switch (this) {
+        CryCause.hungry => AppIcon.causeHungry,
+        CryCause.sleepy => AppIcon.causeSleepy,
+        CryCause.gas => AppIcon.causeGas,
+        CryCause.diaper => AppIcon.causeUncomfortable,
+        CryCause.holdMe => AppIcon.causeHoldMe,
       };
 
   /// "饿了"、"困了"

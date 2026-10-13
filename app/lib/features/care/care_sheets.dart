@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/hh_widgets.dart';
 import '../../data/db/app_database.dart';
 import '../../domain/models/care_detail.dart';
@@ -114,7 +115,7 @@ class _SessionEndSheetState extends State<SessionEndSheet> {
         children: [
           const SheetGrab(),
           Row(children: [
-            EmojiTile(type.emoji, size: 48, radius: 16, fontSize: 26, bg: typeTint(c, type.name)),
+            IconTile(type.icon, size: 48, radius: 16, fontSize: 26, bg: typeTint(c, type.name)),
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -129,7 +130,7 @@ class _SessionEndSheetState extends State<SessionEndSheet> {
               margin: const EdgeInsets.only(top: 10),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(color: c.greenL, borderRadius: BorderRadius.circular(20)),
-              child: Text('✓ 已停止计时', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: c.greenInk)),
+              child: Text.rich(TextSpan(children: [iconSpan(AppIcon.checkSmall, size: 14, gap: 3), const TextSpan(text: '已停止计时')]), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: c.greenInk)),
             ),
           if (type == CareLogType.feed) ...[
             label('方式'),
@@ -141,7 +142,7 @@ class _SessionEndSheetState extends State<SessionEndSheet> {
           ],
           label(type == CareLogType.sleep ? '睡眠时长（可微调）' : '时长（可微调）'),
           Row(children: [
-            _RoundBtn(icon: Icons.remove, onTap: () => _adjust(-1), key: const Key('dur-minus')),
+            _RoundBtn(icon: AppIcon.remove, onTap: () => _adjust(-1), key: const Key('dur-minus')),
             Expanded(
               child: Text.rich(
                 TextSpan(children: [
@@ -155,7 +156,7 @@ class _SessionEndSheetState extends State<SessionEndSheet> {
                 style: TextStyle(color: c.ink, fontFeatures: const [FontFeature.tabularFigures()]),
               ),
             ),
-            _RoundBtn(icon: Icons.add, onTap: () => _adjust(1), key: const Key('dur-plus')),
+            _RoundBtn(icon: AppIcon.add, onTap: () => _adjust(1), key: const Key('dur-plus')),
           ]),
           if (type == CareLogType.feed && method != FeedMethod.breast) ...[
             label('奶量（瓶喂时填写）'),
@@ -208,7 +209,7 @@ class _SessionEndSheetState extends State<SessionEndSheet> {
 
 class _RoundBtn extends StatelessWidget {
   const _RoundBtn({super.key, required this.icon, required this.onTap});
-  final IconData icon;
+  final AppIcon icon;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
@@ -221,7 +222,7 @@ class _RoundBtn extends StatelessWidget {
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: onTap,
-        child: SizedBox.square(dimension: 56, child: Icon(icon, color: c.ink, size: 26)),
+        child: SizedBox.square(dimension: 56, child: Center(child: HhIcon(icon, size: 28))),
       ),
     );
   }
@@ -261,7 +262,7 @@ class _DiaperSheetState extends State<_DiaperSheet> {
         children: [
           const SheetGrab(),
           Row(children: [
-            EmojiTile('🧷', size: 48, radius: 16, fontSize: 26, bg: c.greenL),
+            IconTile(AppIcon.careDiaper, size: 48, radius: 16, fontSize: 26, bg: c.greenL),
             const SizedBox(width: 12),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('换尿布', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: c.ink)),

@@ -9,6 +9,7 @@ import '../../core/prefs.dart';
 import '../../core/providers.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/hh_widgets.dart';
 import '../../services/export/export_service.dart';
 import '../update/update_providers.dart';
@@ -65,11 +66,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final auto = ref.watch(autoListenProvider);
     final baby = ref.watch(currentBabyProvider).value;
 
-    Widget tile(String title, {String? sub, Widget? trailing, VoidCallback? onTap, Key? key}) => ListTile(
+    Widget tile(String title, {String? sub, Widget? trailing, VoidCallback? onTap, Key? key, AppIcon? icon}) => ListTile(
           key: key,
+          leading: icon == null ? null : HhIcon(icon, size: 30),
           title: Text(title, style: TextStyle(fontSize: 15, color: c.ink)),
           subtitle: sub == null ? null : Text(sub, style: TextStyle(fontSize: 12, color: c.sub)),
-          trailing: trailing ?? (onTap == null ? null : Icon(Icons.chevron_right, color: c.sub)),
+          trailing: trailing ?? (onTap == null ? null : const HhIcon(AppIcon.chevronRight, size: 20)),
           onTap: onTap,
         );
     Widget group(List<Widget> children) => Padding(
@@ -106,7 +108,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
             ]),
             group([
-              tile('宝宝小名', sub: baby?.nickname, onTap: baby == null ? null : () => _rename(baby.id, baby.nickname)),
+              tile('宝宝小名', icon: AppIcon.avatarBaby, sub: baby?.nickname, onTap: baby == null ? null : () => _rename(baby.id, baby.nickname)),
               tile('宝宝生日',
                   sub: baby == null ? '…' : DateFormat('yyyy-MM-dd').format(baby.birthDate),
                   onTap: baby == null
@@ -124,14 +126,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         }),
             ]),
             group([
-              tile('夜间模式', sub: '暗红色调，半夜不刺眼', trailing: Switch(value: night, onChanged: (v) => ref.read(nightModeProvider.notifier).set(v))),
+              tile('夜间模式', icon: night ? AppIcon.dayMode : AppIcon.nightMode, sub: '暗红色调，半夜不刺眼', trailing: Switch(value: night, onChanged: (v) => ref.read(nightModeProvider.notifier).set(v))),
               tile('自动监听哭声',
+                  icon: AppIcon.autoListen,
                   sub: 'App 在前台时听到哭声自动开始录音（本地识别，不上传）',
                   trailing: Switch(value: auto, onChanged: (v) => ref.read(autoListenProvider.notifier).set(v))),
             ]),
             group([
               tile('全部记录', sub: '查看、修改或删除历史记录', onTap: () => context.push(Routes.logs)),
               tile('导出录音和标注',
+                  icon: AppIcon.export,
                   key: const Key('export'),
                   sub: '打包成 zip：记录、哭声判断、反馈和录音',
                   trailing: _exporting ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2)) : null,
@@ -140,6 +144,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ]),
             group([
               tile('检查更新',
+                  icon: AppIcon.checkUpdate,
                   key: const Key('check-update'),
                   sub: inAppUpdateSupported
                       ? '当前版本 ${ref.watch(packageInfoProvider).value?.version ?? '…'}'

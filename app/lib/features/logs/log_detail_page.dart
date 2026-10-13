@@ -69,7 +69,7 @@ class LogDetailPage extends ConsumerWidget {
                               ),
                               child: ListTile(
                                 onTap: () => actions.editLog(context, l),
-                                leading: EmojiTile(CareLogType.values.byName(l.type).emoji, bg: typeTint(c, l.type)),
+                                leading: IconTile(CareLogType.values.byName(l.type).icon, bg: typeTint(c, l.type)),
                                 title: Text(
                                   l.endedAt == null
                                       ? CareLogType.values.byName(l.type).runningLabel

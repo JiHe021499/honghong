@@ -15,6 +15,7 @@ import '../../features/update/update_providers.dart';
 import '../../services/audio/auto_listen.dart';
 import '../../services/update/update_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_icon.dart';
 
 class Routes {
   static const home = '/';
@@ -85,7 +86,7 @@ class _TabShellState extends ConsumerState<TabShell> {
     }
   }
 
-  static const tabs = [('🏠', '首页'), ('📊', '规律'), ('👨‍👩‍👧', '家庭'), ('⚙️', '我的')];
+  static const tabs = [(AppIcon.tabHome, '首页'), (AppIcon.tabInsights, '规律'), (AppIcon.tabFamily, '家庭'), (AppIcon.tabMe, '我的')];
 
   @override
   Widget build(BuildContext context) {
@@ -107,8 +108,8 @@ class _TabShellState extends ConsumerState<TabShell> {
                     onTap: () => shell.goBranch(i, initialLocation: i == shell.currentIndex),
                     child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                       Opacity(
-                        opacity: c.night ? .55 : 1,
-                        child: Text(tabs[i].$1, style: const TextStyle(fontSize: 22)),
+                        opacity: i == shell.currentIndex ? 1 : (c.night ? .5 : .75),
+                        child: HhIcon(tabs[i].$1, size: 26, dim: false),
                       ),
                       const SizedBox(height: 3),
                       Text(tabs[i].$2,

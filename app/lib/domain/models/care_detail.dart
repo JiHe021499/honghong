@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../../core/widgets/app_icon.dart';
 import 'care_log_type.dart';
 
 /// 喂奶方式
@@ -116,11 +117,11 @@ String describeLog(CareLogType type, DateTime start, DateTime? end, String? deta
 }
 
 extension CareLogTypeUi on CareLogType {
-  String get emoji => switch (this) {
-        CareLogType.feed => '🍼',
-        CareLogType.sleep => '😴',
-        CareLogType.diaper => '🧷',
-        CareLogType.burp => '🫧',
+  AppIcon get icon => switch (this) {
+        CareLogType.feed => AppIcon.careFeed,
+        CareLogType.sleep => AppIcon.careSleep,
+        CareLogType.diaper => AppIcon.careDiaper,
+        CareLogType.burp => AppIcon.careBurp,
       };
 
   /// 是否是"开始 → 结束"的计时类型

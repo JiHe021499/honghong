@@ -72,6 +72,7 @@ flutter:
   assets:
     - assets/models/
     - assets/brand/mark-1024.png
+    - assets/icons/
 
 flutter_launcher_icons:
   android: true
