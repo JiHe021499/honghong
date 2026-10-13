@@ -40,6 +40,16 @@ final latestLogsProvider =
   yield* ref.watch(careLogRepositoryProvider).watchLatestByType(baby.id);
 });
 
+/// 每秒刷新，用于进行中的计时显示
+final secondTickerProvider = StreamProvider<DateTime>((ref) =>
+    Stream.periodic(const Duration(seconds: 1), (_) => DateTime.now()));
+
+/// 进行中的计时记录（喂奶/睡觉/拍嗝），重启 App 后从数据库恢复
+final activeSessionsProvider = StreamProvider<List<CareLog>>((ref) async* {
+  final baby = await ref.watch(currentBabyProvider.future);
+  yield* ref.watch(careLogRepositoryProvider).watchActive(baby.id);
+});
+
 final recentLogsProvider = StreamProvider<List<CareLog>>((ref) async* {
   final baby = await ref.watch(currentBabyProvider.future);
   yield* ref.watch(careLogRepositoryProvider).watchRecent(baby.id);
@@ -78,6 +88,7 @@ class CryFlow {
     required int durationMs,
     String? audioPath,
     AudioFeatures audio = const AudioFeatures(),
+    bool autoTriggered = false,
   }) async {
     final baby = await _ref.read(currentBabyProvider.future);
     final logs = await _ref.read(careLogRepositoryProvider).latestByType(baby.id);
@@ -96,6 +107,7 @@ class CryFlow {
           prediction: prediction,
           audioPath: audioPath,
           cryConfidence: audio.cryConfidence,
+          autoTriggered: autoTriggered,
         );
   }
 }

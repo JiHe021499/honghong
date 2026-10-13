@@ -1,0 +1,3 @@
+tags:
+  golden:
+    skip: "截图测试：flutter test --tags golden --run-skipped --update-goldens（需要本机有 Noto CJK / Noto Color Emoji 字体）"

@@ -251,3 +251,12 @@ honghong/
 | M6 规律 | 宝宝规律页、个性化先验 | 1 周 |
 | M7 第二阶段 | 自建 Supabase、参与改进、同步 | 2 周 |
 | M8 第三阶段 | 训练、TFLite 接入、模型下发与灰度 | 视数据量 |
+
+## 附：第一阶段实现备注（v1.1 设计稿落地）
+
+- **护理记录计时**：`care_logs.ended_at` 为空表示"进行中"。喂奶/睡觉/拍嗝点一下 `startSession`，点「结束」先 `stopSession` 写结束时间，再弹面板；「继续」调用 `resumeSession` 把结束时间清空，「保存记录」用微调后的时长和细节 `saveSession`。换尿布 `logDiaper` 一点即记（started_at = ended_at），之后 `updateDetail` 改类型。
+- **数据库 v2 迁移**：把 v1 的时间点记录（喂奶/拍嗝/换尿布 ended_at 为空）补成已结束；多条未结束睡眠只保留最新一条；新建部分唯一索引 `care_logs_one_active (baby_id, type) WHERE ended_at IS NULL`，保证每类最多一条进行中。
+- **细节 JSON**（`care_logs.detail`）：`method`（breast/bottleBreast/formula）、`side`（left/right/both）、`ml`、`note`、`diaper`（unknown/pee/poo/both/dry）。
+- **自动监听**：`assets/models/yamnet.tflite`（TF Hub YAMNet 分类版，输入 15600 个 16kHz 采样，输出 521 类），取第 19/20 类（哭泣 / 婴儿哭）得分，3 帧里 2 帧 ≥ 0.35 触发，冷却 60 秒。只在 App 前台时工作。
+- **导出**：「我的 → 导出录音和标注」生成 `honghong-export-*.zip`（`data.json` + `recordings/*.wav`），通过系统分享发出。
+- **截图测试**：`flutter test --tags golden --run-skipped --update-goldens` 生成 `app/test/goldens/*.png`，用来和 `docs/design/screens-*.png` 对照（CI 默认跳过）。
