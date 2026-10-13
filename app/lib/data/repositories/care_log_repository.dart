@@ -79,6 +79,60 @@ class CareLogRepository {
             dirty: const Value(true)));
   }
 
+  /// 补记一条已经结束的记录（全部记录 → 补记）。计时类必须有结束时间；
+  /// 换尿布 end 传 null 即与开始相同。新记录 dirty=true，加入家庭时会同步。
+  Future<String> backfill(String babyId, CareLogType type,
+      {required DateTime start, DateTime? end, CareDetail? detail}) {
+    final err = validateTimes(type, start, end);
+    if (err != null) throw ArgumentError(err);
+    return add(babyId, type, at: start, endedAt: type.isTimed ? end : start, detail: detail?.encode());
+  }
+
+  /// 修改已结束记录的开始/结束时间和细节
+  Future<void> updateRecord(String id,
+      {required DateTime start, DateTime? end, CareDetail? detail}) async {
+    final log = await byId(id);
+    if (log == null) return;
+    final type = CareLogType.values.byName(log.type);
+    final err = validateTimes(type, start, end);
+    if (err != null) throw ArgumentError(err);
+    await (_db.update(_db.careLogs)..where((l) => l.id.equals(id))).write(CareLogsCompanion(
+        startedAt: Value(start),
+        endedAt: Value(type.isTimed ? end : start),
+        detail: Value(detail?.encode()),
+        updatedAt: Value(DateTime.now()),
+        updatedBy: const Value(null),
+        dirty: const Value(true)));
+  }
+
+  /// 校验补记/修改的时间；没问题返回 null
+  static String? validateTimes(CareLogType type, DateTime start, DateTime? end, {DateTime? now}) {
+    final n = (now ?? DateTime.now()).add(const Duration(minutes: 1));
+    if (start.isAfter(n)) return '开始时间不能晚于现在';
+    if (!type.isTimed) return null;
+    if (end == null) return '请选择结束时间';
+    if (!end.isAfter(start)) return '结束时间要晚于开始时间';
+    if (end.isAfter(n)) return '结束时间不能晚于现在';
+    if (end.difference(start) > const Duration(hours: 24)) return '一次不能超过 24 小时';
+    return null;
+  }
+
+  /// 与 [start, end] 重叠的同类记录（进行中的按"到现在"算）。
+  /// 换尿布传一个前后几分钟的窗口，用来提示可能重复。
+  Future<List<CareLog>> overlapping(String babyId, CareLogType type, DateTime start, DateTime end,
+      {String? excludeId}) async {
+    final rows = await (_db.select(_db.careLogs)
+          ..where((l) =>
+              l.babyId.equals(babyId) & l.deleted.not() & l.type.equals(type.name) & l.startedAt.isSmallerThanValue(end)))
+        .get();
+    final now = DateTime.now();
+    return rows.where((r) {
+      if (r.id == excludeId) return false;
+      final rEnd = r.endedAt ?? now;
+      return rEnd.isAfter(start);
+    }).toList();
+  }
+
   /// 换尿布：一点即记，类型先记为"未分类"
   Future<String> logDiaper(String babyId, {DateTime? at}) => add(
       babyId, CareLogType.diaper,

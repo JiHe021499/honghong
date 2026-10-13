@@ -1,0 +1,85 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<title>哄哄 · 全部记录补记 设计稿 v1.5</title>
+<style>
+:root{--cream:#FFF8F0;--peach:#FFB89A;--peach2:#FF9874;--peachL:#FFE7DB;--deep:#E0673F;--ink:#3D3A45;--sub:#8A8494;--line:#F0E6DC;--blueL:#E3EEF8;--greenL:#E6F4EA;--yel:#FFF1C9}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"PingFang SC","Noto Sans CJK SC",sans-serif;background:var(--cream);color:var(--ink);padding:28px}
+h1{font-size:22px;margin-bottom:6px}.lead{color:var(--sub);font-size:13px;margin-bottom:22px;line-height:1.7}
+.row{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+.ph{width:330px;height:640px;border-radius:36px;background:var(--cream);border:2px solid #3D3A4522;padding:18px 16px;position:relative;overflow:hidden}
+.bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.back{width:36px;height:36px;border-radius:50%;background:#fff;box-shadow:0 2px 6px #0001;text-align:center;line-height:36px}
+.add{background:var(--peachL);color:var(--deep);font-weight:800;border-radius:20px;padding:7px 13px;font-size:14px;border:1.5px dashed var(--peach2)}
+.day{font-size:12px;color:var(--sub);font-weight:700;margin:10px 0 6px}
+.card{background:#fff;border-radius:20px;padding:4px 0;box-shadow:0 3px 10px #0000000d}
+.it{display:flex;align-items:center;gap:10px;padding:9px 12px;font-size:13px}
+.it img{width:34px;height:34px;border-radius:11px;padding:3px}
+.it .t{margin-left:auto;color:var(--sub);font-size:11px}
+.dim{position:absolute;inset:0;background:#3D3A4555}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--cream);border-radius:28px 28px 0 0;padding:12px 18px 18px}
+.grab{width:40px;height:4px;border-radius:2px;background:#ddd;margin:0 auto 12px}
+.hd{display:flex;gap:10px;align-items:center}.hd img{width:44px;height:44px;border-radius:14px;padding:4px}
+.hd b{font-size:18px;display:block}.hd span{font-size:12px;color:var(--sub)}
+.lb{font-size:12px;color:var(--sub);margin:14px 0 8px}
+.seg{display:flex;background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:3px}
+.seg i{flex:1;text-align:center;font-style:normal;font-size:13px;padding:7px 0;border-radius:11px}
+.seg i.on{background:var(--peach2);color:#fff;font-weight:800}
+.tr{display:flex;justify-content:space-between;background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:11px 13px;margin-bottom:7px;font-size:13px}
+.tr b{font-size:15px}.tr span{color:var(--sub)}
+.len{font-size:12px;color:var(--sub)}
+.warn{background:var(--yel);color:#8A6A12;border-radius:12px;padding:8px 10px;font-size:11.5px;margin-top:6px;line-height:1.5}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chips i{font-style:normal;font-size:12px;border:1.5px solid var(--line);background:#fff;border-radius:16px;padding:5px 11px}.chips i.on{background:var(--peachL);border-color:var(--peach2);color:var(--deep);font-weight:700}
+.btns{display:flex;gap:10px;margin-top:16px}.btns div{flex:9;text-align:center;border-radius:14px;padding:12px 0;font-weight:800;background:#fff;border:1.5px solid var(--line)}.btns .p{flex:11;background:var(--peach2);border-color:var(--peach2);color:#fff}
+.del{text-align:center;color:var(--deep);font-weight:800;font-size:13px;margin-top:10px}
+.cap{width:330px;font-size:12px;color:var(--sub);margin-top:10px;line-height:1.6}
+.note{max-width:1040px;margin-top:26px;font-size:13px;line-height:1.8}.note li{margin-left:18px}
+</style></head><body>
+<h1>18 · 全部记录：补记 & 修改时间</h1>
+<p class="lead">忘了点开始/结束？在「全部记录」右上角「＋ 补记」补上；已有记录点一下可以改开始/结束时间、细节，或删除。<br>喂奶 / 睡觉 / 拍嗝补记必须有结束时间；换尿布只选一个时间。</p>
+<div class="row">
+<div><div class="ph">
+ <div class="bar"><div class="back">‹</div><b>全部记录</b><div class="add">＋ 补记</div></div>
+ <div class="day">10月14日 星期三</div>
+ <div class="card">
+  <div class="it"><img src="../../app/assets/icons/3.0x/care_feed.png" style="background:var(--peachL)">母乳 · 左侧 · 18 分钟<span class="t">06:10–06:28</span></div>
+  <div class="it"><img src="../../app/assets/icons/3.0x/care_diaper.png" style="background:var(--greenL)">换尿布 · 小便<span class="t">05:40</span></div>
+  <div class="it"><img src="../../app/assets/icons/3.0x/care_sleep.png" style="background:var(--blueL)">睡了 3 小时 10 分<span class="t">02:20–05:30</span></div>
+ </div>
+ <div class="day">10月13日 星期二</div>
+ <div class="card">
+  <div class="it"><img src="../../app/assets/icons/3.0x/care_feed.png" style="background:var(--peachL)">瓶喂母乳 · 90ml<span class="t">23:40–23:55</span></div>
+  <div class="it"><img src="../../app/assets/icons/3.0x/care_burp.png" style="background:var(--peachL)">拍嗝 · 打出来了<span class="t">23:56–00:04</span></div>
+ </div>
+</div><p class="cap">A · 列表页：右上角「＋ 补记」。点条目 = 修改；左滑 = 删除（原有）。进行中的条目点开仍是「结束」面板。</p></div>
+
+<div><div class="ph"><div class="dim"></div><div class="sheet"><div class="grab"></div>
+ <div class="hd"><img src="../../app/assets/icons/3.0x/care_sleep.png" style="background:var(--blueL)"><div><b>补记一条</b><span>忘了点？选好类型和时间补上</span></div></div>
+ <div class="lb">类型</div><div class="seg"><i>喂奶</i><i class="on">睡觉</i><i>拍嗝</i><i>换尿布</i></div>
+ <div class="lb">时间</div>
+ <div class="tr"><span>开始</span><b>10月14日 00:30 ›</b></div>
+ <div class="tr"><span>结束</span><b>10月14日 02:40 ›</b></div>
+ <div class="len">共 2 小时 10 分钟</div>
+ <div class="warn">和已有的睡觉（02:20–05:30）时间重叠，确认不是重复再保存</div>
+ <div class="lb">备注（可选）</div><div class="chips"><i>小睡</i><i class="on">夜间长觉</i><i>不易入睡</i><i>自定义</i></div>
+ <div class="btns"><div>取消</div><div class="p">补记</div></div>
+</div></div><p class="cap">B · 补记面板：类型 → 时间 → 细节（与结束面板相同的方式/侧别/奶量、尿布类型、备注）。重叠只提醒不拦截；结束早于开始、在未来或超过 24 小时时红字提示且「补记」不可点。</p></div>
+
+<div><div class="ph"><div class="dim"></div><div class="sheet"><div class="grab"></div>
+ <div class="hd"><img src="../../app/assets/icons/3.0x/care_feed.png" style="background:var(--peachL)"><div><b>修改喂奶记录</b><span>可改时间和细节</span></div></div>
+ <div class="lb">时间</div>
+ <div class="tr"><span>开始</span><b>10月14日 06:10 ›</b></div>
+ <div class="tr"><span>结束</span><b>10月14日 06:28 ›</b></div>
+ <div class="len">共 18 分钟</div>
+ <div class="lb">方式</div><div class="seg"><i class="on">母乳</i><i>瓶喂母乳</i><i>配方奶</i></div>
+ <div class="lb">哪一侧</div><div class="seg"><i class="on">左侧</i><i>右侧</i><i>两侧</i></div>
+ <div class="btns"><div>取消</div><div class="p">保存修改</div></div>
+ <div class="del">删除这条记录</div>
+</div></div><p class="cap">C · 修改面板：类型固定，开始/结束都能改；底部「删除这条记录」二次确认。</p></div>
+</div>
+<div class="note"><b>规则</b><ul>
+<li>补记/修改/删除都写 updated_at 并标记待同步；加入家庭时家人那边同步更新（后写为准）。</li>
+<li>首页「上次喂奶」、规律分析、桌面小部件、锁屏通知、快捷开关都读数据库，保存后自动刷新。</li>
+<li>时间选择：先选日期（最多一年内），再选时刻；默认结束=现在，开始按类型往前推（喂奶 20 分、睡觉 1 小时、拍嗝 10 分）。</li>
+<li>哭声记录不在补记范围内（它来自录音分析）。</li>
+</ul></div>
+</body></html>

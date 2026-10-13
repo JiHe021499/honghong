@@ -46,6 +46,8 @@ dependencies:
   archive: ^4.5.2
   uuid: ^4.6.0
   intl: ^0.20.3
+  flutter_localizations:
+    sdk: flutter
   go_router: ^18.0.2
   shared_preferences: ^2.5.6
   package_info_plus: ^10.2.2
