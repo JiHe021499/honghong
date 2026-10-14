@@ -107,6 +107,9 @@ void main() {
     await settle(tester);
     await tester.tap(find.byKey(const Key('save')));
     await shot(tester, '08-saved');
+    await tester.pump(const Duration(seconds: 4));
+    await tester.tap(find.byKey(const Key('diary-back')));
+    await settle(tester, 8);
 
     voice.ok = false;
     final g2 = await tester.startGesture(tester.getCenter(find.byKey(const Key('diary-mic'))));
