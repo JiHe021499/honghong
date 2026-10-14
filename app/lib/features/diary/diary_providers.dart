@@ -69,6 +69,12 @@ final todaySummaryReadyProvider = Provider.autoDispose<bool>((ref) {
   return s?.status == 'ready';
 });
 
+/// 今天的小结失败满 3 次（首页入口卡显示“小结未生成”，点进小结页重试）
+final todaySummaryFailedProvider = Provider.autoDispose<bool>((ref) {
+  final n = ref.watch(summaryClockProvider)();
+  return SummaryService.needsManualRetry(ref.watch(summaryRowProvider(DateTime(n.year, n.month, n.day))).value);
+});
+
 /// 首次进入补问性别：跳过后不再反复问
 const kDiaryGenderPrompted = 'diary_gender_prompted';
 

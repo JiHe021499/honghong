@@ -15,9 +15,11 @@ class DiaryEntryCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.hh;
     final summary = ref.watch(todaySummaryReadyProvider);
+    // 失败满 3 次：只提示“小结未生成”，不放重试按钮，点卡片进小结页再重试
+    final failed = !summary && ref.watch(todaySummaryFailedProvider);
     return GestureDetector(
       key: const Key('diary-entry'),
-      onTap: () => context.push(summary ? Routes.diarySummary : Routes.diary),
+      onTap: () => context.push(summary || failed ? Routes.diarySummary : Routes.diary),
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -52,7 +54,13 @@ class DiaryEntryCard extends ConsumerWidget {
                 ),
               ]),
               const SizedBox(height: 2),
-              Text(summary ? '今日小结已生成 · 点开看看' : '说一句话，帮你把今天记下来', style: TextStyle(fontSize: 12, color: c.sub)),
+              Text(
+                  summary
+                      ? '今日小结已生成 · 点开看看'
+                      : failed
+                          ? '小结未生成'
+                          : '说一句话，帮你把今天记下来',
+                  key: const Key('diary-entry-sub'), style: TextStyle(fontSize: 12, color: c.sub)),
             ]),
           ),
           const HhIcon(AppIcon.chevronRight, size: 18),

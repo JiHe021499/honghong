@@ -85,6 +85,9 @@ void main() {
 
   testWidgets('失败满 3 次：时间线重试卡、小结页重试', (tester) async {
     await boot(tester, failed3: true);
+    await tester.ensureVisible(find.byKey(const Key('diary-entry')));
+    await settle(tester);
+    await shot(tester, 'home-entry-failed');
     go(tester, Routes.diaryDay, push: true);
     await settle(tester, 10);
     await shot(tester, 'tl-retry');

@@ -234,7 +234,7 @@ void main() {
       await boot(tester, failed3: true);
       await openFromHome(tester);
       expect(api.summaryCalls, isEmpty); // 满 3 次后不再自动请求
-      await tester.tap(find.byKey(const Key('diary-all')));
+      GoRouter.of(tester.element(find.byType(Scaffold).last)).push(Routes.diaryDay);
       await settle(tester, 10);
       expect(find.text('小结暂时没生成好，点此重试'), findsOneWidget);
       expect(find.byKey(const Key('tl-summary-pending')), findsNothing);
@@ -249,14 +249,42 @@ void main() {
 
     testWidgets('小结页：失败满 3 次显示重试按钮', (tester) async {
       await boot(tester, failed3: true);
-      await openFromHome(tester);
-      GoRouter.of(tester.element(find.byType(Scaffold).last)).push(Routes.diarySummary);
-      await settle(tester, 10);
+      await openFromHome(tester); // 入口卡直达小结页
       expect(find.byKey(const Key('sum-failed')), findsOneWidget);
       await tester.tap(find.byKey(const Key('sum-retry')));
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
       await settle(tester, 10);
       expect(find.byKey(const Key('sum-content')), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets('失败满 3 次：首页入口卡显示“小结未生成”且无重试按钮，点进小结页重试', (tester) async {
+      await boot(tester, failed3: true);
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
+      await settle(tester, 10);
+      expect(find.descendant(of: find.byKey(const Key('diary-entry')), matching: find.text('小结未生成')), findsOneWidget);
+      expect(find.byKey(const Key('sum-retry')), findsNothing);
+      expect(find.byKey(const Key('tl-summary-retry')), findsNothing);
+      expect(find.textContaining('点此重试'), findsNothing);
+      await openFromHome(tester);
+      expect(find.byType(SummaryPage), findsOneWidget);
+      expect(find.byKey(const Key('sum-failed')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('sum-retry')));
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
+      await settle(tester, 10);
+      expect(find.byKey(const Key('sum-content')), findsOneWidget);
+      expect(api.summaryCalls, hasLength(1));
+      GoRouter.of(tester.element(find.byType(Scaffold).last)).pop();
+      await settle(tester, 10);
+      expect(find.text('今日小结已生成 · 点开看看'), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets('失败未满 3 次：入口卡仍是默认文案、进日记页', (tester) async {
+      await boot(tester, err: const DiaryApiException(DiaryApiError.failed));
+      await openFromHome(tester);
+      expect(find.byType(SummaryPage), findsNothing);
+      expect(find.byKey(const Key('diary-mic')), findsOneWidget);
       await unmount(tester);
     });
   });
