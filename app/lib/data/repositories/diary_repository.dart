@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../domain/models/care_log_type.dart';
 import '../db/app_database.dart';
+import '../../core/app_clock.dart';
 
 /// 时间线上的一行：要么是一条护理记录（快捷/日记/补记），要么是一张不落 care_logs 的日记卡
 /// （汇总、情绪、其他）。同一件事只出现一次（架构 §3.6）。
@@ -60,7 +61,7 @@ class DiaryRepository {
                   id: Value(logId),
                   source: const Value('diary'),
                   diaryCardId: Value(cardId),
-                  updatedAt: Value(DateTime.now()),
+                  updatedAt: Value(AppClock.now()),
                 ));
           }
           await _db.into(_db.diaryCards).insert(d.card.copyWith(
@@ -93,7 +94,7 @@ class DiaryRepository {
   Future<void> updateCard(String id, DiaryCardsCompanion patch) =>
       (_db.update(_db.diaryCards)..where((c) => c.id.equals(id))).write(patch.copyWith(
             editedByUser: const Value(true),
-            updatedAt: Value(DateTime.now()),
+            updatedAt: Value(AppClock.now()),
             diaryDate: patch.diaryDate.present ? Value(dayStart(patch.diaryDate.value)) : const Value.absent(),
           ));
 
@@ -109,17 +110,17 @@ class DiaryRepository {
   Future<void> deleteCareLog(String careLogId) => _db.transaction(() async {
         await _softDeleteCareLog(careLogId);
         await (_db.update(_db.diaryCards)..where((c) => c.careLogId.equals(careLogId) & c.deleted.not()))
-            .write(DiaryCardsCompanion(deleted: const Value(true), updatedAt: Value(DateTime.now())));
+            .write(DiaryCardsCompanion(deleted: const Value(true), updatedAt: Value(AppClock.now())));
       });
 
   Future<void> _softDeleteCard(String id) => (_db.update(_db.diaryCards)..where((c) => c.id.equals(id)))
-      .write(DiaryCardsCompanion(deleted: const Value(true), updatedAt: Value(DateTime.now())));
+      .write(DiaryCardsCompanion(deleted: const Value(true), updatedAt: Value(AppClock.now())));
 
   // 与 CareLogRepository.delete 一致：保留 deleted 标记以便家庭同步，进行中的补上结束时间
   Future<void> _softDeleteCareLog(String id) async {
     final log = await (_db.select(_db.careLogs)..where((l) => l.id.equals(id) & l.deleted.not())).getSingleOrNull();
     if (log == null) return;
-    final now = DateTime.now();
+    final now = AppClock.now();
     await (_db.update(_db.careLogs)..where((l) => l.id.equals(id))).write(CareLogsCompanion(
         deleted: const Value(true), endedAt: Value(log.endedAt ?? now), updatedAt: Value(now), updatedBy: const Value(null), dirty: const Value(true)));
   }

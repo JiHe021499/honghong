@@ -10,7 +10,9 @@ import '../../core/widgets/hh_widgets.dart';
 import '../../domain/diary/diary_card.dart';
 import '../../domain/diary/parse_result.dart';
 import 'diary_providers.dart';
+import '../../services/diary/diary_metrics.dart';
 import 'diary_widgets.dart';
+import '../../core/app_clock.dart';
 
 /// 确认页返回这个值表示“改原文”
 const kEditRaw = -1;
@@ -37,6 +39,12 @@ class _ConfirmPageState extends ConsumerState<ConfirmPage> {
       final baby = await ref.read(currentBabyProvider.future);
       final age = r.createdAt.difference(baby.birthDate).inDays.clamp(0, 3 * 366);
       final n = await ref.read(diaryServiceProvider).save(babyId: baby.id, ageInDays: age, r: r);
+      final changed = r.cards.where((c) => c.edited || !c.selected).length;
+      final m = ref.read(diaryMetricsProvider);
+      await m.add(DiaryMetric.save);
+      if (changed == 0) await m.add(DiaryMetric.saveOneTap);
+      await m.add(DiaryMetric.cards, r.cards.length);
+      await m.add(DiaryMetric.cardsChanged, changed);
       if (mounted) context.pop(n);
     } catch (e) {
       if (!mounted) return;
@@ -243,7 +251,7 @@ class _EditorState extends State<_Editor> {
       };
 
   String get _timeText {
-    final day = card.diaryDate.difference(DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)).inDays == -1 ? '昨天' : '今天';
+    final day = card.diaryDate.difference(DateTime(AppClock.now().year, AppClock.now().month, AppClock.now().day)).inDays == -1 ? '昨天' : '今天';
     if (card.aggregate) return '$day · 当日汇总';
     return '$day · ${cardTimeLabel(card)}';
   }
@@ -263,7 +271,7 @@ class _EditorState extends State<_Editor> {
   }
 
   void _day(int offset) {
-    final now = DateTime.now();
+    final now = AppClock.now();
     final d = DateTime(now.year, now.month, now.day + offset);
     _set(() {
       DateTime move(DateTime t) => DateTime(d.year, d.month, d.day, t.hour, t.minute);
@@ -278,7 +286,7 @@ class _EditorState extends State<_Editor> {
     final c = context.hh;
     Widget lab(String s) => Padding(padding: const EdgeInsets.only(top: 10, bottom: 6), child: Text(s, style: TextStyle(fontSize: 13, color: c.sub)));
     final nf = _numField;
-    final isYesterday = card.diaryDate.isBefore(DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day));
+    final isYesterday = card.diaryDate.isBefore(DateTime(AppClock.now().year, AppClock.now().month, AppClock.now().day));
     return Container(
       margin: const EdgeInsets.only(top: 10),
       decoration: BoxDecoration(border: Border(top: BorderSide(color: c.line))),

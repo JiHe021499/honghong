@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 
 import '../../data/db/app_database.dart';
+import '../../core/app_clock.dart';
 
 /// 导出录音和标注：data.json（宝宝、护理记录、哭声事件、反馈）+ recordings/*.wav，打成一个 zip。
 /// 用于第三阶段拿自家宝宝的数据训练模型。
@@ -34,7 +35,7 @@ class ExportService {
     return {
       'format': 'honghong-export',
       'format_version': formatVersion,
-      'exported_at': iso(now ?? DateTime.now()),
+      'exported_at': iso(now ?? AppClock.now()),
       'babies': [
         for (final b in babies) {'id': b.id, 'nickname': b.nickname, 'birth_date': iso(b.birthDate)},
       ],
@@ -80,7 +81,7 @@ class ExportService {
 
   /// 生成 zip，返回文件路径和录音数量
   Future<({String path, int recordings, int bytes})> writeZip(Directory outDir, {DateTime? now}) async {
-    now ??= DateTime.now();
+    now ??= AppClock.now();
     final json = await buildJson(now: now);
     final archive = Archive()
       ..addFile(ArchiveFile.string('data.json', const JsonEncoder.withIndent('  ').convert(json)));

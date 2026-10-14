@@ -67,6 +67,17 @@ class _TextInputPageState extends ConsumerState<TextInputPage> {
         child: ListView(padding: const EdgeInsets.fromLTRB(20, 8, 20, 24), children: [
           DiaryHeader(title: '打字记录', onBack: () => context.pop()),
           const SizedBox(height: 8),
+          // 关掉了联网识别、本机识别又不可用：不再弹窗重问，只给一行淡色提示
+          if (ref.watch(systemAsrBrokenProvider) && ref.watch(cloudAsrConsentProvider) == false && ref.watch(cloudVoiceCaptureProvider) != null)
+            GestureDetector(
+              key: const Key('cloud-asr-hint'),
+              behavior: HitTestBehavior.opaque,
+              onTap: () => context.go('${Routes.settings}?focus=cloud-asr'),
+              child: Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 8),
+                child: Text('可在设置中开启联网语音识别', style: TextStyle(fontSize: 12, color: c.sub.withValues(alpha: .8))),
+              ),
+            ),
           Container(
             constraints: const BoxConstraints(minHeight: 120),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

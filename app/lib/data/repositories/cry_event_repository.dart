@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../../domain/models/cry_context.dart';
 import '../../domain/predictor/cry_predictor.dart';
 import '../db/app_database.dart';
+import '../../core/app_clock.dart';
 
 class CryEventRepository {
   CryEventRepository(this._db);
@@ -33,7 +34,7 @@ class CryEventRepository {
           predictionJson: jsonEncode(prediction.toJson()),
           predictorVersion: prediction.predictorVersion,
           autoTriggered: Value(autoTriggered),
-          updatedAt: Value(DateTime.now()),
+          updatedAt: Value(AppClock.now()),
         ));
     return id;
   }

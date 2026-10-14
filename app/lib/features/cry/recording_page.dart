@@ -17,6 +17,7 @@ import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/hh_widgets.dart';
 import '../../services/audio/auto_listen.dart';
 import 'analyzing_view.dart';
+import '../../core/app_clock.dart';
 
 /// 录音（设计稿 11）：16kHz 单声道 WAV，最长 10 秒，实时波形 + 倒计时圆环。
 /// 没有麦克风权限时仍可"现在就分析"，只用记录推断。
@@ -32,7 +33,7 @@ class _RecordingPageState extends ConsumerState<RecordingPage> {
   static const maxSeconds = 10;
   static const bars = 26;
   AudioRecorder? _recorder;
-  final _startedAt = DateTime.now();
+  final _startedAt = AppClock.now();
   final _levels = List<double>.filled(bars, .08);
   Timer? _timer;
   StreamSubscription<Amplitude>? _amp;

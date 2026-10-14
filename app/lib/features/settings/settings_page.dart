@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -13,7 +14,8 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/hh_widgets.dart';
 import '../../services/cloud/cloud_providers.dart';
-import '../diary/diary_providers.dart' show cloudAsrConsentProvider;
+import '../diary/diary_providers.dart' show cloudAsrConsentProvider, diaryMetricsProvider;
+import '../diary/diary_sheets.dart' show diaryDisclaimer;
 import '../../services/lockscreen/lockscreen_controller.dart';
 import '../../services/lockscreen/lockscreen_notification.dart';
 import '../../services/lockscreen/quick_surfaces.dart';
@@ -22,6 +24,7 @@ import 'package:home_widget/home_widget.dart';
 
 import '../../services/export/export_service.dart';
 import '../update/update_providers.dart';
+import '../../core/app_clock.dart';
 
 /// 我的：宝宝信息、夜间模式、自动监听、全部记录、导出
 class SettingsPage extends ConsumerStatefulWidget {
@@ -32,6 +35,20 @@ class SettingsPage extends ConsumerStatefulWidget {
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _exporting = false;
+  String? _focused;
+
+  /// `/settings?focus=cloud-asr`：滚到该项
+  void _maybeFocus() {
+    final f = GoRouterState.of(context).uri.queryParameters['focus'];
+    if (f == null || f == _focused) return;
+    _focused = f;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _focusKey.currentContext;
+      if (ctx != null) Scrollable.ensureVisible(ctx, alignment: .3, duration: const Duration(milliseconds: 300));
+    });
+  }
+
+  final _focusKey = GlobalKey();
 
   Future<void> _export() async {
     setState(() => _exporting = true);
@@ -76,6 +93,49 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       '· 匿名：不需要注册，不收集手机号、姓名，宝宝只传月龄，不传生日和小名\n'
       '· 只上传你点过"什么起作用了"的哭声，护理记录只随哭声带上"距离上次喂奶多久"这类时间信息\n'
       '· 随时可以关闭，也可以在这里一键删除已经上传的全部数据';
+
+  /// 妈咪日记隐私说明（与 docs/privacy/mommy-diary-privacy.md 一致）
+  static const diaryPrivacyText =
+      '· 说话内容优先用手机自带的语音识别转文字，录音不离开手机。\n'
+      '· 手机自带识别用不了、且你同意或在设置中开启“联网语音识别”时，按住说话期间的录音会实时发给科大讯飞股份有限公司转成文字；'
+      '只在内存中转发，识别完成即删除，我们和讯飞都不保存录音，也不用于训练。\n'
+      '· 整理成卡片、生成今日小结时，会把识别后的文字（或当天的次数统计）、宝宝日龄和当前时间发给 DeepSeek（杭州深度求索人工智能基础技术研究有限公司）大模型处理；'
+      '不发送小名、性别、生日或设备信息，服务器不保存文字。\n'
+      '· 以上第三方均在中国境内处理，数据不出境。\n'
+      '· 日记原话、卡片和小结只保存在这台手机上；喂奶、睡眠、换尿布记录加入家庭后会同步给家人。\n'
+      '· 内测数据只在本机按天统计次数，不包含任何内容，不会自动上传。';
+
+  void _showDiaryPrivacy() => showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('妈咪日记与隐私'),
+          content: const SingleChildScrollView(child: Text('$diaryPrivacyText\n\n$diaryDisclaimer')),
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('知道了'))],
+        ),
+      );
+
+  void _showMetrics() {
+    final text = ref.read(diaryMetricsProvider).report();
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('妈咪日记内测数据'),
+        content: Text(text, key: const Key('metrics-report')),
+        actions: [
+          TextButton(
+            key: const Key('metrics-copy'),
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: text));
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已复制，可以发给我们')));
+            },
+            child: const Text('复制'),
+          ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('关闭')),
+        ],
+      ),
+    );
+  }
 
   Future<void> _toggleResearch(bool v) async {
     if (v) {
@@ -127,6 +187,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final night = ref.watch(nightModeProvider);
     final auto = ref.watch(autoListenProvider);
     final cloudAsr = ref.watch(cloudAsrConsentProvider) == true;
+    _maybeFocus();
     final baby = ref.watch(currentBabyProvider).value;
 
     Widget tile(String title, {String? sub, Widget? trailing, VoidCallback? onTap, Key? key, AppIcon? icon}) => ListTile(
@@ -200,8 +261,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         final d = await showDatePicker(
                           context: context,
                           initialDate: baby.birthDate,
-                          firstDate: DateTime.now().subtract(const Duration(days: 1000)),
-                          lastDate: DateTime.now(),
+                          firstDate: AppClock.now().subtract(const Duration(days: 1000)),
+                          lastDate: AppClock.now(),
                         );
                         if (d == null) return;
                         await ref.read(babyRepositoryProvider).updateBirthDate(baby.id, d);
@@ -224,7 +285,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
               tile(
                 '联网语音识别',
-                key: const Key('cloud-asr'),
+                key: _focusKey,
                 icon: AppIcon.voice,
                 sub: '手机自带识别用不了时，把妈咪日记的录音实时发到讯飞转文字，不保存录音',
                 trailing: Switch(
@@ -317,6 +378,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               if (cloud) tile('删除我的数据', key: const Key('research-delete'), sub: '删除云端上传过的哭声片段和标注', onTap: _deleteResearch),
             ]),
             group([
+              tile('妈咪日记与隐私', key: const Key('diary-privacy'), icon: AppIcon.diary, sub: '语音识别、AI 整理用到的第三方和数据范围', onTap: _showDiaryPrivacy),
+              tile('妈咪日记内测数据', key: const Key('diary-metrics'), icon: AppIcon.insightTarget, sub: '一键保存率、卡片修改率、识别失败率（只在本机统计）', onTap: _showMetrics),
+            ]),
+            group([
               tile(
                 '检查更新',
                 icon: AppIcon.checkUpdate,
@@ -328,7 +393,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Text(
-                '哄哄的判断仅供参考，不能替代医生。数据默认只保存在这台手机上，加入家庭或开启参与改进后才会上传。',
+                '哄哄的判断仅供参考，不能替代医生。数据默认只保存在这台手机上，加入家庭或开启参与改进后才会上传。\n$diaryDisclaimer',
                 style: TextStyle(fontSize: 12, color: c.sub, height: 1.6),
                 textAlign: TextAlign.center,
               ),

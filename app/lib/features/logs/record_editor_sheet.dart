@@ -8,6 +8,7 @@ import '../../data/db/app_database.dart';
 import '../../domain/models/care_detail.dart';
 import '../../domain/models/care_log_type.dart';
 import '../../data/repositories/care_log_repository.dart';
+import '../../core/app_clock.dart';
 
 /// 补记 / 修改面板的结果
 class RecordEditResult {
@@ -51,7 +52,7 @@ class RecordEditorSheet extends StatefulWidget {
 
 class _RecordEditorSheetState extends State<RecordEditorSheet> {
   bool get editing => widget.log != null;
-  DateTime get _now => widget.now ?? DateTime.now();
+  DateTime get _now => widget.now ?? AppClock.now();
 
   static Duration _defaultLen(CareLogType t) => switch (t) {
         CareLogType.feed => const Duration(minutes: 20),

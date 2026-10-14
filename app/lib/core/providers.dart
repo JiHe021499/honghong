@@ -15,6 +15,7 @@ import '../domain/predictor/model_predictor.dart';
 import '../domain/predictor/personalization.dart';
 import '../domain/predictor/rule_based_predictor.dart';
 import '../services/model/model_providers.dart';
+import 'app_clock.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) {
   final db = AppDatabase();
@@ -39,7 +40,7 @@ final currentBabyProvider = FutureProvider<Baby>(
 
 /// 每分钟刷新一次，用于"多久前"的显示
 final clockProvider = StreamProvider<DateTime>((ref) => Stream.periodic(
-    const Duration(minutes: 1), (_) => DateTime.now()));
+    const Duration(minutes: 1), (_) => AppClock.now()));
 
 final latestLogsProvider =
     StreamProvider<Map<CareLogType, CareLog>>((ref) async* {
@@ -49,7 +50,7 @@ final latestLogsProvider =
 
 /// 每秒刷新，用于进行中的计时显示
 final secondTickerProvider = StreamProvider<DateTime>((ref) =>
-    Stream.periodic(const Duration(seconds: 1), (_) => DateTime.now()));
+    Stream.periodic(const Duration(seconds: 1), (_) => AppClock.now()));
 
 /// 进行中的计时记录（喂奶/睡觉/拍嗝），重启 App 后从数据库恢复
 final activeSessionsProvider = StreamProvider<List<CareLog>>((ref) async* {

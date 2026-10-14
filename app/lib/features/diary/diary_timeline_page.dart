@@ -18,7 +18,8 @@ import 'diary_edit_sheet.dart';
 import 'diary_entry_row.dart';
 import '../../domain/diary/summary_service.dart';
 import 'diary_flow.dart' show diaryClockProvider;
-import 'diary_providers.dart' show summaryClockProvider, summaryRowProvider;
+import 'diary_providers.dart' show summaryClockProvider, summaryRowProvider, summaryTriggerProvider, diaryMetricsProvider;
+import '../../services/diary/diary_metrics.dart';
 import 'diary_widgets.dart';
 
 /// 进入时间线时带的参数：刚保存了几条（屏 16 的提示条）
@@ -53,11 +54,8 @@ final aggregateIdsProvider = StreamProvider.autoDispose.family<Set<String>, Date
       .map((rows) => rows.map((r) => r.id).toSet());
 });
 
-final daySummaryProvider = FutureProvider.autoDispose.family<DailySummary?, DateTime>((ref, day) async {
-  ref.watch(dayTimelineProvider(day));
-  final baby = await ref.watch(currentBabyProvider.future);
-  final s = await ref.watch(diaryRepositoryProvider).summaryOf(baby.id, day);
-  return s?.status == 'ready' && (s?.content?.isNotEmpty ?? false) ? s : null;
+final daySummaryProvider = Provider.autoDispose.family<AsyncValue<DailySummary?>, DateTime>((ref, day) {
+  return ref.watch(summaryRowProvider(day)).whenData((s) => s?.status == 'ready' && (s?.content?.isNotEmpty ?? false) ? s : null);
 });
 
 /// 日记时间线（屏 16–20）：某一天的照护记录 + 日记卡，顶部近 5 天切换和今日小结。
@@ -135,10 +133,14 @@ class _DiaryTimelinePageState extends ConsumerState<DiaryTimelinePage> {
     if (r == null || !mounted) return;
     if (r.delete) {
       final ok = await confirmDiaryDelete(context, what: _describe(row));
-      if (ok) await diary.deleteCard(row.id);
+      if (ok) {
+        await diary.deleteCard(row.id);
+        if (!row.editedByUser) await ref.read(diaryMetricsProvider).add(DiaryMetric.cardsChanged);
+      }
       return;
     }
     await diary.updateCard(row.id, r.patch!);
+    if (!row.editedByUser) await ref.read(diaryMetricsProvider).add(DiaryMetric.cardsChanged);
   }
 
   /// 确认框里的那一行：情绪 · 下午哭得厉害（有原话片段时用原话）
@@ -178,6 +180,8 @@ class _DiaryTimelinePageState extends ConsumerState<DiaryTimelinePage> {
                 onTap: () => context.push('${Routes.diarySummary}?date=${DateFormat('yyyy-MM-dd').format(day)}'),
                 child: _SummaryCard(summary: summary),
               )
+            else if (SummaryService.needsManualRetry(ref.watch(summaryRowProvider(day)).value))
+              _RetryCard(onTap: () => ref.read(summaryTriggerProvider).retry(day))
             else if (_pending(ref))
               Padding(
                 key: const Key('tl-summary-pending'),
@@ -289,6 +293,49 @@ class _SummaryCard extends StatelessWidget {
           ]),
         ),
       ]),
+    );
+  }
+}
+
+/// 失败满 3 次：给一个重试入口（只对失败的小结，D8 不变）
+class _RetryCard extends StatefulWidget {
+  const _RetryCard({required this.onTap});
+  final Future<void> Function() onTap;
+  @override
+  State<_RetryCard> createState() => _RetryCardState();
+}
+
+class _RetryCardState extends State<_RetryCard> {
+  bool _busy = false;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.hh;
+    return GestureDetector(
+      key: const Key('tl-summary-retry'),
+      onTap: _busy
+          ? null
+          : () async {
+              setState(() => _busy = true);
+              await widget.onTap();
+              if (mounted) setState(() => _busy = false);
+            },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          gradient: c.night ? null : const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFFE7DB), Color(0xFFFFF1E8)]),
+          color: c.night ? const Color(0xFF24130F) : null,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(children: [
+          const HhIcon(AppIcon.nightMode, size: 30),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(_busy ? '正在重新整理…' : '小结暂时没生成好，点此重试',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: c.night ? const Color(0xFFE07A67) : c.ink)),
+          ),
+        ]),
+      ),
     );
   }
 }

@@ -13,6 +13,7 @@ import '../../data/db/app_database.dart';
 import '../../domain/predictor/model_meta.dart';
 import '../../domain/predictor/model_predictor.dart';
 import '../cloud/cloud_api.dart';
+import '../../core/app_clock.dart';
 
 /// 把 .tflite 字节变成可推理的分类头（真实实现用 tflite_flutter，测试里用假的）
 abstract class HeadLoader {
@@ -137,7 +138,7 @@ class ModelManager {
     } on CloudException {
       return null;
     }
-    await _prefs.setString(kLastCheck, DateTime.now().toIso8601String());
+    await _prefs.setString(kLastCheck, AppClock.now().toIso8601String());
     if (row == null) return null;
     final version = row['version'] as String;
     if (version == currentVersion || badVersions.contains(version)) return null;
@@ -159,7 +160,7 @@ class ModelManager {
       await File(path).writeAsBytes(bytes, flush: true);
       await File('$path.json').writeAsString(jsonEncode(meta.raw), flush: true);
       await _db.into(_db.modelVersions).insertOnConflictUpdate(ModelVersionsCompanion.insert(
-          version: version, kind: 'classifier', localPath: path, sha256: meta.sha256, installedAt: Value(DateTime.now())));
+          version: version, kind: 'classifier', localPath: path, sha256: meta.sha256, installedAt: Value(AppClock.now())));
       await _activate(version);
       await _prune();
       return version;

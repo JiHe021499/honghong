@@ -1,3 +1,4 @@
+import 'package:honghong/core/app_clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -27,6 +28,13 @@ Future<AppDatabase> pumpApp(WidgetTester tester,
   ));
   await settle(tester);
   return database;
+}
+
+/// 截图测试用：时间从 [base] 开始，只随 tester.pump 的假时间前进，与真实运行时刻无关
+void fixClock(WidgetTester tester, DateTime base) {
+  final t0 = tester.binding.clock.now();
+  AppClock.source = () => base.add(tester.binding.clock.now().difference(t0));
+  addTearDown(() => AppClock.source = DateTime.now);
 }
 
 /// 有脉冲动画和每秒计时器，不能 pumpAndSettle，固定推进几帧

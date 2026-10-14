@@ -17,9 +17,11 @@ import 'diary_entry_row.dart';
 import 'diary_timeline_page.dart' show DiaryDayArgs, aggregateIdsProvider, timelineOrder;
 import 'diary_flow.dart';
 import 'diary_providers.dart';
+import '../../services/diary/diary_metrics.dart';
 import 'diary_sheets.dart';
 import 'diary_widgets.dart';
 import '../../services/diary/voice_capture.dart';
+import '../../core/app_clock.dart';
 
 enum MicState { idle, recording, cancelZone, processing }
 
@@ -69,7 +71,7 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
     if (prefs.getBool(kDiaryGenderPrompted) ?? false) return;
     final baby = await ref.read(currentBabyProvider.future);
     if (baby.gender != null || !mounted) return;
-    final days = DateTime.now().difference(baby.birthDate).inDays;
+    final days = AppClock.now().difference(baby.birthDate).inDays;
     final g = await showGenderSheet(context, nickname: baby.nickname, days: days);
     await prefs.setBool(kDiaryGenderPrompted, true);
     if (g != null) {
@@ -104,6 +106,8 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
     _starting = false;
     if (!ok && mounted) {
       _reset();
+      _metric(DiaryMetric.voice);
+      _metric(DiaryMetric.voiceFail);
       await _recognizerFailed(cap);
     }
   }
@@ -134,6 +138,8 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
     }
     setState(() => mic = MicState.processing);
     final text = await voice.stop();
+    _metric(DiaryMetric.voice);
+    if (text.isEmpty) _metric(DiaryMetric.voiceFail);
     if (!mounted) return;
     if (text.isEmpty) {
       _reset();
@@ -142,6 +148,8 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
     setState(() => live = text);
     await _process(text, 'voice');
   }
+
+  void _metric(DiaryMetric m) => ref.read(diaryMetricsProvider).add(m);
 
   void _reset() {
     _tick?.cancel();
@@ -158,6 +166,7 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
     if (identical(cap, cloud) || cloud == null) return _voiceFailed();
     final firstSwitch = !_systemBroken;
     _systemBroken = true;
+    ref.read(systemAsrBrokenProvider.notifier).mark();
     switch (_consent) {
       case null:
         final ok = await showCloudAsrConsentSheet(context);
@@ -221,7 +230,7 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
   Widget build(BuildContext context) {
     final c = context.hh;
     final baby = ref.watch(currentBabyProvider).value;
-    final days = baby == null ? null : DateTime.now().difference(baby.birthDate).inDays;
+    final days = baby == null ? null : AppClock.now().difference(baby.birthDate).inDays;
     final entries = ref.watch(todayDiaryProvider).value ?? const <TimelineEntry>[];
     return Scaffold(
       body: SafeArea(
@@ -503,7 +512,7 @@ class _TodayList extends ConsumerWidget {
         ),
       ]);
     }
-    final now = DateTime.now();
+    final now = AppClock.now();
     final aggs = ref.watch(aggregateIdsProvider(DateTime(now.year, now.month, now.day))).value ?? const <String>{};
     final rows = timelineOrder(entries, aggregates: aggs).take(2).toList();
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [

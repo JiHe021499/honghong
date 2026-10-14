@@ -14,6 +14,7 @@ import 'package:home_widget/home_widget.dart';
 import 'ios_quick.dart';
 import 'quick_actions.dart';
 import 'quick_surfaces.dart';
+import '../../core/app_clock.dart';
 
 /// 设置里的"锁屏快捷记录"开关（默认关闭）
 class LockscreenEnabled extends Notifier<bool> {
@@ -91,7 +92,7 @@ class LockscreenController with WidgetsBindingObserver {
       final done = await IosQuick.drain(_ref.read(databaseProvider));
       if (done != null) {
         _done = done;
-        _doneAt = DateTime.now();
+        _doneAt = AppClock.now();
       }
     } catch (_) {}
   }
@@ -99,14 +100,14 @@ class LockscreenController with WidgetsBindingObserver {
   Future<void> handle(String actionId) async {
     final db = _ref.read(databaseProvider);
     _done = await runQuickAction(db, actionId);
-    _doneAt = DateTime.now();
+    _doneAt = AppClock.now();
     await refresh();
   }
 
   /// 刷新所有快捷入口：小部件和快捷开关总是刷新，锁屏通知只在开关打开时显示
   /// "已记下…"确认在 2 分钟内保留（数据库变化触发的刷新不会把它冲掉）
   Future<void> refresh() {
-    final keep = _doneAt != null && DateTime.now().difference(_doneAt!) < const Duration(minutes: 2);
+    final keep = _doneAt != null && AppClock.now().difference(_doneAt!) < const Duration(minutes: 2);
     return QuickSurfaces.publish(_ref.read(databaseProvider), done: keep ? _done : null, prefs: _ref.read(prefsProvider));
   }
 

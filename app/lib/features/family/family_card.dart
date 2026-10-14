@@ -10,6 +10,7 @@ import '../../data/db/app_database.dart';
 import '../../domain/models/care_log_type.dart';
 import '../../services/cloud/cloud_api.dart';
 import '../../services/cloud/cloud_providers.dart';
+import '../../core/app_clock.dart';
 
 /// 家人最近一次记录
 final familyActivityProvider = StreamProvider<CareLog?>((ref) => ref.watch(careLogRepositoryProvider).watchLatestByFamily());
@@ -37,7 +38,7 @@ class FamilyCard extends ConsumerWidget {
     final fid = ref.watch(familyIdProvider);
     final members = fid == null ? const <FamilyMember>[] : (ref.watch(familyMembersProvider).value ?? const <FamilyMember>[]);
     final activity = fid == null ? null : ref.watch(familyActivityProvider).value;
-    final now = ref.watch(clockProvider).value ?? DateTime.now();
+    final now = ref.watch(clockProvider).value ?? AppClock.now();
     final status = ref.watch(syncStatusProvider);
 
     final bgs = [c.peachL, c.blueL, c.greenL];

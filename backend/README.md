@@ -4,7 +4,7 @@
 
 ## 服务器
 - 推荐 4 核 8G（最低 2 核 4G），50–100G SSD，Ubuntu 22.04/24.04
-- Docker + Docker Compose；Caddy（或 Nginx）反代并自动 HTTPS
+- Docker + Docker Compose；反代用 1Panel 的 OpenResty（nginx），HTTPS 由 Cloudflare 代理负责
 - 防火墙只开 80/443（SSH 建议改端口 + 密钥登录），Postgres 不暴露公网
 - 国内服务器需 ICP 备案
 
@@ -17,11 +17,9 @@ docker compose up -d
 ```
 开启匿名登录（`GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED=true`），然后执行 `supabase/migrations/0001_init.sql`。
 
-Caddyfile 示例：
-```
-api.example.com {
-  reverse_proxy localhost:8000
-}
+反代（1Panel OpenResty / nginx）示例：
+```nginx
+location /auth/v1/ { proxy_pass http://127.0.0.1:8000; }
 ```
 
 ## 备份
@@ -89,6 +87,17 @@ curl -s localhost:8787/healthz && curl -s -o /dev/null -w '%{http_code}\n' https
 - 启停：`cd /opt/honghong-supabase && docker compose up -d` / `docker compose ps`
 - 备份：cron 每天 03:30（服务器时间 UTC）运行 `/opt/honghong-supabase/backup.sh`，pg_dump + storage 打包到 `/opt/honghong-backups`，保留 7 天（同机备份，建议再同步到异地）
 - App 端配置：`SUPABASE_URL=https://honghong.hczhw.com` + anon key（anon key 可放客户端；service_role key 绝不能进 App）
+
+## AI 网关（妈咪日记）：nc_am 现状
+
+- 已部署 `backend/ai-gateway` 的 asr 版本（PR #6），配了讯飞，没配 DeepSeek。所以 `/diary-asr` 可用，`/diary-parse` 和 `/diary-summary` 目前不可用。
+- 反代：1Panel OpenResty（nginx）站点的 `/ai/` location 已配好 WebSocket upgrade，超时 90s；http 层的 `map` 写在 `conf.d/00-honghong-ws-map.conf`。不使用 Caddy。
+- 环境变量以 `ai-gateway/src/config.js` 为准，值只放在服务器 `.env`：
+  - `SUPABASE_JWT_SECRET`
+  - `XFYUN_APPID`、`XFYUN_API_KEY`、`XFYUN_API_SECRET`
+  - `DEEPSEEK_API_KEY`（也可以用 `LLM_API_KEY`，目前未配）
+  - 可选：`LLM_BASE_URL`、`LLM_MODEL`、`LLM_TIMEOUT_MS`、`LIMIT_PARSE_PER_DAY`、`LIMIT_SUMMARY_PER_DAY`、`LIMIT_ASR_PER_DAY`
+- 上线清单见 `docs/release/mommy-diary-launch-checklist.md`。
 
 ## 模型下发（第三阶段）
 

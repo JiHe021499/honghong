@@ -1,6 +1,7 @@
 @Tags(['golden'])
 library;
 
+
 import 'dart:io';
 
 import 'package:drift/drift.dart' show driftRuntimeOptions, Value;
@@ -91,6 +92,7 @@ void main() {
   }
 
   testWidgets('今日小结：首页入口、屏 21、屏 22', (tester) async {
+    fixClock(tester, DateTime(2026, 10, 14, 21));
     await boot(tester);
     await tester.ensureVisible(find.byKey(const Key('diary-entry')));
     await settle(tester);
@@ -105,6 +107,7 @@ void main() {
   });
 
   testWidgets('今日小结：屏 23 当天无记录', (tester) async {
+    fixClock(tester, DateTime(2026, 10, 14, 21));
     await boot(tester, data: false);
     GoRouter.of(tester.element(find.byType(Scaffold).last)).push(Routes.diarySummary);
     await settle(tester, 10);
@@ -113,6 +116,7 @@ void main() {
   });
 
   testWidgets('生成失败：时间线“今晚小结还在整理”', (tester) async {
+    fixClock(tester, DateTime(2026, 10, 14, 21));
     await boot(tester, err: const DiaryApiException(DiaryApiError.failed));
     GoRouter.of(tester.element(find.byType(Scaffold).last)).push(Routes.diaryDay);
     await settle(tester, 10);

@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../../domain/models/cry_cause.dart';
 import '../../domain/predictor/cry_predictor.dart';
 import '../db/app_database.dart';
+import '../../core/app_clock.dart';
 
 class FeedbackRepository {
   FeedbackRepository(this._db);
@@ -22,7 +23,7 @@ class FeedbackRepository {
         ));
     // 反馈也要同步给家人，并进入"参与改进"上传队列
     await (_db.update(_db.cryEvents)..where((e) => e.id.equals(cryEventId)))
-        .write(CryEventsCompanion(updatedAt: Value(DateTime.now()), dirty: const Value(true)));
+        .write(CryEventsCompanion(updatedAt: Value(AppClock.now()), dirty: const Value(true)));
     return id;
   }
 

@@ -7,6 +7,7 @@ import 'package:record/record.dart';
 
 import '../../core/prefs.dart';
 import 'cry_detector.dart';
+import '../../core/app_clock.dart';
 
 enum AutoListenStatus { off, starting, listening, paused, noPermission, unavailable }
 
@@ -70,7 +71,7 @@ class AutoListenController extends Notifier<AutoListenStatus> {
     final d = _detector;
     if (d == null || _paused) return;
     for (final f in _buffer.add(pcm16ToFloat(bytes))) {
-      final now = DateTime.now();
+      final now = AppClock.now();
       if (_trigger.add(d.score(f), now)) {
         pause();
         ref.read(cryDetectedProvider.notifier).fire(now);

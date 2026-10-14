@@ -18,6 +18,7 @@ import '../care/care_actions.dart';
 import '../care/care_log_row.dart';
 import '../diary/diary_entry_card.dart';
 import '../diary/diary_providers.dart' show summaryTriggerProvider;
+import '../../core/app_clock.dart';
 
 /// 首页（设计稿 01/02/04/06/08/10，夜间 14）
 class HomePage extends ConsumerStatefulWidget {
@@ -150,7 +151,7 @@ class _Header extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.hh;
     final baby = ref.watch(currentBabyProvider).value;
-    final days = baby == null ? null : DateTime.now().difference(DateUtils.dateOnly(baby.birthDate)).inDays;
+    final days = baby == null ? null : AppClock.now().difference(DateUtils.dateOnly(baby.birthDate)).inDays;
     return Padding(
       padding: const EdgeInsets.only(top: 6, bottom: 14),
       child: Row(children: [
@@ -207,7 +208,7 @@ class _StatusBar extends ConsumerWidget {
 
     if (active.isNotEmpty) {
       ref.watch(secondTickerProvider);
-      final now = DateTime.now();
+      final now = AppClock.now();
       final first = active.first;
       final t = CareLogType.values.byName(first.type);
       return Container(
@@ -240,7 +241,7 @@ class _StatusBar extends ConsumerWidget {
 
     ref.watch(clockProvider);
     final latest = ref.watch(latestLogsProvider).value ?? const {};
-    final now = DateTime.now();
+    final now = AppClock.now();
     final feed = latest[CareLogType.feed];
     final sleep = latest[CareLogType.sleep];
     final spans = <InlineSpan>[];
@@ -396,7 +397,7 @@ class _QuickGrid extends ConsumerWidget {
 
     Widget runRow(CareLog log, List<CareLogType> companions) {
       final t = CareLogType.values.byName(log.type);
-      final elapsed = DateTime.now().difference(log.startedAt);
+      final elapsed = AppClock.now().difference(log.startedAt);
       return IntrinsicHeight(
         child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Expanded(
@@ -506,7 +507,7 @@ class _Timeline extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.hh;
     final all = ref.watch(recentLogsProvider).value ?? const <CareLog>[];
-    final today = DateUtils.dateOnly(DateTime.now());
+    final today = DateUtils.dateOnly(AppClock.now());
     final done = all.where((l) => l.endedAt != null && !l.startedAt.isBefore(today)).toList();
     final rows = [...active, ...done];
     final hint = justDiaperId != null

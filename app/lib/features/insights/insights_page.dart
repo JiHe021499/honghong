@@ -10,6 +10,7 @@ import '../../domain/models/care_log_type.dart';
 import '../../domain/models/cry_cause.dart';
 import '../../domain/predictor/cry_predictor.dart';
 import '../family/family_card.dart';
+import '../../core/app_clock.dart';
 
 class InsightsData {
   const InsightsData({required this.cries, required this.trend, required this.sleepHours, required this.causes, required this.fromFeedback, required this.agreement});
@@ -25,7 +26,7 @@ class InsightsData {
 final insightsProvider = FutureProvider<InsightsData>((ref) async {
   ref.watch(recentLogsProvider); // 记录变化时重算
   final baby = await ref.watch(currentBabyProvider.future);
-  final now = DateTime.now();
+  final now = AppClock.now();
   final from = now.subtract(const Duration(days: 7));
   final logs = await ref.read(careLogRepositoryProvider).since(baby.id, from);
   final cries = await ref.read(cryEventRepositoryProvider).since(baby.id, from);

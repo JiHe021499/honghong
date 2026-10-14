@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/env.dart';
 import '../../core/prefs.dart';
+import '../../services/diary/diary_metrics.dart';
 import '../../core/providers.dart';
 import '../../data/db/app_database.dart';
 import '../../data/repositories/diary_repository.dart';
@@ -13,6 +14,7 @@ import '../../domain/diary/summary_service.dart';
 import '../../services/diary/diary_api.dart';
 import '../../services/diary/cloud_voice_capture.dart';
 import '../../services/diary/voice_capture.dart';
+import '../../core/app_clock.dart';
 
 /// 未配置 AI 网关（AI_GATEWAY_URL 或云端为空）时为 null：语音/整理不可用，文字可手动保存为“其他”。测试里注入假实现。
 /// 网关调用用的 JWT：Supabase 匿名登录
@@ -49,7 +51,7 @@ final diaryServiceProvider = Provider((ref) => DiaryService(ref.watch(databasePr
 /// 今天的日记时间线（日记主页“今天的日记”）
 final todayDiaryProvider = StreamProvider.autoDispose<List<TimelineEntry>>((ref) async* {
   final baby = await ref.watch(currentBabyProvider.future);
-  yield* ref.watch(diaryRepositoryProvider).watchTimeline(baby.id, DateTime.now());
+  yield* ref.watch(diaryRepositoryProvider).watchTimeline(baby.id, AppClock.now());
 });
 
 /// 某天的小结行（随数据库变化刷新）
@@ -67,6 +69,12 @@ final todaySummaryReadyProvider = Provider.autoDispose<bool>((ref) {
   return s?.status == 'ready';
 });
 
+/// 今天的小结失败满 3 次（首页入口卡显示“小结未生成”，点进小结页重试）
+final todaySummaryFailedProvider = Provider.autoDispose<bool>((ref) {
+  final n = ref.watch(summaryClockProvider)();
+  return SummaryService.needsManualRetry(ref.watch(summaryRowProvider(DateTime(n.year, n.month, n.day))).value);
+});
+
 /// 首次进入补问性别：跳过后不再反复问
 const kDiaryGenderPrompted = 'diary_gender_prompted';
 
@@ -75,6 +83,17 @@ const kDiaryDraft = 'diary_draft';
 
 /// 联网识别告知：null=还没问过，true=已同意，false=已拒绝（拒绝后不再自动弹，直接退回文字输入）
 const kDiaryCloudAsrConsent = 'diary_cloud_asr_consent';
+
+final diaryMetricsProvider = Provider((ref) => DiaryMetrics(ref.watch(prefsProvider)));
+
+/// 本次运行中本机语音识别已判定不可用（日记页置位，打字页据此提示可开启联网识别）
+final systemAsrBrokenProvider = NotifierProvider<SystemAsrBroken, bool>(SystemAsrBroken.new);
+
+class SystemAsrBroken extends Notifier<bool> {
+  @override
+  bool build() => false;
+  void mark() => state = true;
+}
 
 /// 联网语音识别同意状态：null 未问过 / true 同意 / false 不用。
 /// 首次告知弹窗和设置开关都通过它写同一个 pref，保持同步。
@@ -90,7 +109,7 @@ class CloudAsrConsentNotifier extends Notifier<bool?> {
 }
 
 /// 今日小结服务（时钟可在测试里替换）
-final summaryClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
+final summaryClockProvider = Provider<DateTime Function()>((ref) => AppClock.now);
 final summaryServiceProvider =
     Provider((ref) => SummaryService(ref.watch(databaseProvider), api: ref.watch(diaryApiProvider), now: ref.watch(summaryClockProvider)));
 
@@ -114,6 +133,14 @@ class SummaryTrigger with WidgetsBindingObserver {
     try {
       final baby = await _ref.read(currentBabyProvider.future);
       await _ref.read(summaryServiceProvider).trigger(baby.id, baby.birthDate);
+    } catch (_) {}
+  }
+
+  /// 失败满 3 次后用户手动重试
+  Future<void> retry(DateTime day) async {
+    try {
+      final baby = await _ref.read(currentBabyProvider.future);
+      await _ref.read(summaryServiceProvider).retry(baby.id, day, baby.birthDate);
     } catch (_) {}
   }
 
