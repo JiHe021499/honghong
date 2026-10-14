@@ -77,6 +77,15 @@ const kDiaryDraft = 'diary_draft';
 /// 联网识别告知：null=还没问过，true=已同意，false=已拒绝（拒绝后不再自动弹，直接退回文字输入）
 const kDiaryCloudAsrConsent = 'diary_cloud_asr_consent';
 
+/// 本次运行中本机语音识别已判定不可用（日记页置位，打字页据此提示可开启联网识别）
+final systemAsrBrokenProvider = NotifierProvider<SystemAsrBroken, bool>(SystemAsrBroken.new);
+
+class SystemAsrBroken extends Notifier<bool> {
+  @override
+  bool build() => false;
+  void mark() => state = true;
+}
+
 /// 联网语音识别同意状态：null 未问过 / true 同意 / false 不用。
 /// 首次告知弹窗和设置开关都通过它写同一个 pref，保持同步。
 final cloudAsrConsentProvider = NotifierProvider<CloudAsrConsentNotifier, bool?>(CloudAsrConsentNotifier.new);
@@ -115,6 +124,14 @@ class SummaryTrigger with WidgetsBindingObserver {
     try {
       final baby = await _ref.read(currentBabyProvider.future);
       await _ref.read(summaryServiceProvider).trigger(baby.id, baby.birthDate);
+    } catch (_) {}
+  }
+
+  /// 失败满 3 次后用户手动重试
+  Future<void> retry(DateTime day) async {
+    try {
+      final baby = await _ref.read(currentBabyProvider.future);
+      await _ref.read(summaryServiceProvider).retry(baby.id, day, baby.birthDate);
     } catch (_) {}
   }
 

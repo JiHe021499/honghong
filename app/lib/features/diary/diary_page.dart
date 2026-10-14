@@ -159,6 +159,7 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
     if (identical(cap, cloud) || cloud == null) return _voiceFailed();
     final firstSwitch = !_systemBroken;
     _systemBroken = true;
+    ref.read(systemAsrBrokenProvider.notifier).mark();
     switch (_consent) {
       case null:
         final ok = await showCloudAsrConsentSheet(context);

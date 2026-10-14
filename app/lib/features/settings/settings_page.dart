@@ -33,6 +33,20 @@ class SettingsPage extends ConsumerStatefulWidget {
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _exporting = false;
+  String? _focused;
+
+  /// `/settings?focus=cloud-asr`：滚到该项
+  void _maybeFocus() {
+    final f = GoRouterState.of(context).uri.queryParameters['focus'];
+    if (f == null || f == _focused) return;
+    _focused = f;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _focusKey.currentContext;
+      if (ctx != null) Scrollable.ensureVisible(ctx, alignment: .3, duration: const Duration(milliseconds: 300));
+    });
+  }
+
+  final _focusKey = GlobalKey();
 
   Future<void> _export() async {
     setState(() => _exporting = true);
@@ -128,6 +142,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final night = ref.watch(nightModeProvider);
     final auto = ref.watch(autoListenProvider);
     final cloudAsr = ref.watch(cloudAsrConsentProvider) == true;
+    _maybeFocus();
     final baby = ref.watch(currentBabyProvider).value;
 
     Widget tile(String title, {String? sub, Widget? trailing, VoidCallback? onTap, Key? key, AppIcon? icon}) => ListTile(
@@ -225,7 +240,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
               tile(
                 '联网语音识别',
-                key: const Key('cloud-asr'),
+                key: _focusKey,
                 icon: AppIcon.voice,
                 sub: '手机自带识别用不了时，把妈咪日记的录音实时发到讯飞转文字，不保存录音',
                 trailing: Switch(

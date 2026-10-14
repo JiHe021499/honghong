@@ -267,6 +267,33 @@ void main() {
       await unmount(tester);
     });
 
+    testWidgets('已关闭联网识别：本机不可用 → 打字页显示淡色提示，点击跳到设置该项', (tester) async {
+      await boot(tester, const {kDiaryCloudAsrConsent: false});
+      await go(tester, Routes.diary);
+      await hold(tester);
+      expect(find.byKey(const Key('cloud-asr-agree')), findsNothing); // 不再弹窗重问
+      await tester.tap(find.byKey(const Key('voice-err-text')));
+      await settle(tester, 10);
+      expect(find.byKey(const Key('diary-text')), findsOneWidget);
+      expect(find.text('可在设置中开启联网语音识别'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('cloud-asr-hint')));
+      await settle(tester, 10);
+      expect(find.byKey(const Key('cloud-asr-switch')), findsOneWidget);
+      expect(tester.getRect(find.byKey(const Key('cloud-asr-switch'))).top < 2532 / 3, isTrue);
+      expect(switchOn(tester), isFalse);
+      await unmount(tester);
+    });
+
+    testWidgets('本机识别正常时打字页不显示提示', (tester) async {
+      await boot(tester, const {kDiaryCloudAsrConsent: false});
+      await go(tester, Routes.diary);
+      await tester.tap(find.byKey(const Key('diary-type')));
+      await settle(tester, 10);
+      expect(find.byKey(const Key('diary-text')), findsOneWidget);
+      expect(find.byKey(const Key('cloud-asr-hint')), findsNothing);
+      await unmount(tester);
+    });
+
     testWidgets('首次告知里拒绝 → 设置显示关', (tester) async {
       await boot(tester, const {kDiaryCloudAsrConsent: false});
       await go(tester, Routes.settings);

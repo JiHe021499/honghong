@@ -60,11 +60,28 @@ class SummaryService {
     return f;
   }
 
-  Future<DailySummary?> _ensure(String babyId, DateTime day, DateTime birthDate) async {
+  /// 失败满 3 次后的手动重试（用户点“点此重试”）。只对 failed 生效；ready/empty 一律不重生成（D8）。
+  Future<DailySummary?> retry(String babyId, DateTime day, DateTime birthDate) {
+    final key = '$babyId:${_ymd(day)}';
+    final running = _inflight[key];
+    if (running != null) return running;
+    final f = _ensure(babyId, _d(day), birthDate, manual: true).whenComplete(() {
+      _inflight.remove(key);
+    });
+    _inflight[key] = f;
+    return f;
+  }
+
+  /// 是否该显示“小结暂时没生成好，点此重试”
+  static bool needsManualRetry(DailySummary? s) => s != null && s.status == 'failed' && s.attempts >= summaryMaxAttempts;
+
+  Future<DailySummary?> _ensure(String babyId, DateTime day, DateTime birthDate, {bool manual = false}) async {
+    bool ok(DailySummary s) => manual ? s.status == 'failed' : _retryable(s);
     final existing = await _repo.summaryOf(babyId, day);
-    if (existing != null && !_retryable(existing)) return existing;
+    if (existing == null && manual) return null;
+    if (existing != null && !ok(existing)) return existing;
     final row = existing ?? await _repo.claimSummary(babyId, day, promptVersion: promptVersion);
-    if (!_retryable(row)) return row;
+    if (!ok(row)) return row;
     final s = await statsOf(babyId, day);
     if (s.isEmpty) {
       await _repo.updateSummary(row.id, DailySummariesCompanion(status: const Value('empty'), generatedAt: Value(now())));
