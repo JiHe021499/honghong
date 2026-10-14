@@ -1,7 +1,8 @@
 #!/bin/sh
 # 把 honghong-releases 的公开 version.json 和对应 APK 同步到分发页目录。只读公开地址，不需要任何密钥。
 #   data/version.json           : 原样加上 channels.<渠道>.localApkUrl（本站 APK 校验通过才写）
-#   files/<渠道>/<apkName>      : 本站 APK，每个渠道保留最近 KEEP 个
+#   files/<渠道>/<apkName 去掉 .apk>-<versionCode>-<sha256 前 8 位>.apk : 本站 APK，每个渠道保留最近 KEEP 个
+#   （文件名随内容变，Cloudflare 缓存 1 天也不会拿到旧包）
 # 用法（nc_am 宿主机 root crontab）：
 #   */5 * * * * /opt/honghong-download/sync-version.sh >> /opt/honghong-download/sync.log 2>&1
 # 可用环境变量覆盖：HH_DL_ROOT（默认站点下的 download 目录）、HH_SRC、HH_KEEP（默认 3）、HH_MIN_FREE_MB（默认 2048）
@@ -46,11 +47,14 @@ def write_atomic(path, data):
 def ensure_apk(ch, e):
     """本站已有且校验过就直接用；否则下载到同目录临时文件，校验大小和 sha256 后原子替换。返回本站路径或 None。"""
     name, url, size, sha = e.get("apkName"), e.get("apkUrl"), e.get("size"), str(e.get("sha256", "")).lower()
+    code = e.get("versionCode")
     if not (isinstance(name, str) and NAME_RE.match(name) and isinstance(url, str) and url.startswith(APK_PREFIX)
-            and isinstance(size, int) and size > 0 and re.fullmatch(r"[0-9a-f]{64}", sha)):
+            and isinstance(size, int) and size > 0 and isinstance(code, int) and code > 0
+            and re.fullmatch(r"[0-9a-f]{64}", sha)):
         log(f"[{ch}] 元数据不完整，跳过本站同步"); return None
     d = os.path.join(FILES, ch); os.makedirs(d, exist_ok=True)
-    dst, mark = os.path.join(d, name), os.path.join(d, name + ".sha256")
+    local = "%s-%d-%s.apk" % (name[:-4], code, sha[:8])
+    dst, mark = os.path.join(d, local), os.path.join(d, local + ".sha256")
     if os.path.isfile(dst) and os.path.getsize(dst) == size:
         try:
             if open(mark).read().strip() == sha: return dst
@@ -58,18 +62,18 @@ def ensure_apk(ch, e):
         if sha256(dst) == sha:
             write_atomic(mark, (sha + "\n").encode()); return dst
     if shutil.disk_usage(d).free < size + MIN_FREE:
-        log(f"[{ch}] 磁盘剩余不足，跳过下载 {name}"); return None
+        log(f"[{ch}] 磁盘剩余不足，跳过下载 {local}"); return None
     fd, tmp = tempfile.mkstemp(prefix=".dl-", suffix=".part", dir=d); os.close(fd)
     try:
         fetch(url, tmp, 300)
         got_size, got_sha = os.path.getsize(tmp), sha256(tmp)
         if got_size != size or got_sha != sha:
-            log(f"[{ch}] 校验失败 {name}：size {got_size}/{size} sha {got_sha[:12]}/{sha[:12]}"); return None
+            log(f"[{ch}] 校验失败 {local}：size {got_size}/{size} sha {got_sha[:12]}/{sha[:12]}"); return None
         os.chmod(tmp, 0o644); os.replace(tmp, dst)
         write_atomic(mark, (sha + "\n").encode())
-        log(f"[{ch}] 已下载 {name}（{size} 字节，sha256 校验通过）"); return dst
+        log(f"[{ch}] 已下载 {local}（{size} 字节，sha256 校验通过）"); return dst
     except Exception as ex:
-        log(f"[{ch}] 下载失败 {name}：{ex}"); return None
+        log(f"[{ch}] 下载失败 {local}：{ex}"); return None
     finally:
         if os.path.exists(tmp): os.unlink(tmp)
 
