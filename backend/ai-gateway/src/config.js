@@ -2,7 +2,7 @@
 export function loadConfig(env = process.env) {
   const cfg = {
     port: Number(env.PORT ?? 8787),
-    host: env.HOST ?? '127.0.0.1', // 只监听本机，由 Caddy 反代
+    host: env.HOST ?? '127.0.0.1', // 只监听本机，由 OpenResty 反代
     jwtSecret: env.SUPABASE_JWT_SECRET ?? '',
     maxBodyBytes: Number(env.MAX_BODY_BYTES ?? 8 * 1024),
     maxTextChars: 500, // 架构 §8：文本长度上限 500 字

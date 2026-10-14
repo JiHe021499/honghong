@@ -1,27 +1,47 @@
 # 妈咪日记上线清单（需要人工执行，Agent 不执行）
 
-## 1. 合并顺序（逐个 PR 都基于上一个，按顺序合）
-1. P3 → PR #4
-2. P4 → PR #5
-3. 讯飞联网识别兜底 → PR #6
-4. P5 今日小结 → PR #7
-5. P6 打磨与内测 → PR #8
+## 1. 合并顺序（PR 逐个叠加，从 #1 开始按顺序合）
+1. #1 P0 准备阶段（网关骨架、评测脚本、新图标）→ master
+2. #2 P1 数据层（drift v5、`0004_diary.sql`、DiaryRepository）
+3. #3 P2 ai-gateway 拆分与小结、评测集
+4. #4 P3 客户端主流程
+5. #5 P4 日记时间线与编辑
+6. #6 讯飞联网识别兜底
+7. #7 P5 今日小结、设置「联网语音识别」开关
+8. #8 P6 埋点、隐私与免责、小结失败重试、golden 修复
 
 每合一个，就把下一个 PR 的 base 改成 master（或者先 rebase），再看 CI 是否通过。
 
 ## 2. 线上数据库
 - 客户端用 drift 本地库，schema v5。升级时 App 内自动迁移，不需要线上操作。
-- Supabase 迁移 `0004`：**目前没有在线上执行**。在线上执行之前要做三件事：先在预发库或备份上演练，确认可以回滚，再在低峰时执行。由负责人手动操作。
+- Supabase 迁移 `0004_diary.sql`：**目前没有在线上执行**。在线上执行之前要做三件事：先在预发库或备份上演练，确认可以回滚，再在低峰时执行。由负责人手动操作。
 
 ## 3. AI 网关（backend/ai-gateway）
-- 在服务器上配置环境变量（不要提交进 git）：`DEEPSEEK_API_KEY`、`XFYUN_APP_ID`、`XFYUN_API_KEY`、`XFYUN_API_SECRET`、Supabase JWT 校验配置（见 `.env.example`）。
-- 每日限额（北京时间自然日）：parse 60 次、summary 3 次、diary-asr 60 次。
-- 反向代理（Caddy/nginx）：
-  - 增加 `/ai/diary-parse`、`/ai/diary-summary` 两个 HTTPS 路由。
-  - `/ai/diary-asr` 要打开 WebSocket upgrade，读超时不少于 70 秒。
-  - 详见架构文档 §4.4。
-- 客户端构建参数：配置网关地址。没配置时，日记退化为“原话存成其他”，小结一直显示“还在整理”。
-- 上线后观察：网关的 429 和 5xx 比例、P90 耗时（目标 ≤5 秒），以及讯飞和 DeepSeek 的用量与余额。
+现状（nc_am）：
+- 已部署 asr 版本（PR #6），配了讯飞，`/diary-asr` 可用。
+- **没有配 DeepSeek**，所以 `/diary-parse` 和 `/diary-summary` 目前不可用。
+
+反向代理是 1Panel 的 OpenResty（nginx），不是 Caddy：
+- 站点 `/ai/` 下的 location 已经配好 WebSocket upgrade，超时 90s。
+- http 层的 `map $http_upgrade $connection_upgrade` 写在 `conf.d/00-honghong-ws-map.conf`。
+- 改完配置后先 `nginx -t`，再 reload OpenResty。
+
+环境变量以 `backend/ai-gateway/src/config.js` 为准，值只放在服务器 `.env`，不要进 git：
+
+| 变量 | 用途 | nc_am 现状 |
+|---|---|---|
+| `SUPABASE_JWT_SECRET` | 校验 App 的 Supabase JWT | 已配 |
+| `XFYUN_APPID`、`XFYUN_API_KEY`、`XFYUN_API_SECRET` | 讯飞语音听写，三项缺一 `/diary-asr` 就返回 503 | 已配 |
+| `DEEPSEEK_API_KEY`（也可以用 `LLM_API_KEY`） | 整理和小结 | **未配，上线 P2 之后的版本前必须补上** |
+| `LLM_BASE_URL`、`LLM_MODEL`、`LLM_TIMEOUT_MS` | 默认值分别是 `https://api.deepseek.com`、`deepseek-chat`、`7000` | 用默认值 |
+| `LIMIT_PARSE_PER_DAY`、`LIMIT_SUMMARY_PER_DAY`、`LIMIT_ASR_PER_DAY` | 每日限额（北京时间），默认 60、3、60 | 用默认值 |
+| `HOST`、`PORT`、`ASR_IDLE_MS`、`XFYUN_URL`、`MAX_BODY_BYTES` | 可选 | 用默认值 |
+
+待办：
+- [ ] 在 nc_am 的网关 `.env` 里补上 `DEEPSEEK_API_KEY`，部署 P6 版本的网关并重启。
+- [ ] 确认 `/ai/diary-parse` 和 `/ai/diary-summary` 已在 OpenResty 的 `/ai/` 下放行。
+- [ ] 构建 App 时注入网关地址。没配置时，日记退化为“原话存成其他”，小结一直显示“还在整理”。
+- [ ] 上线后观察：网关的 429 和 5xx 比例、P90 耗时（目标 ≤5 秒），以及讯飞和 DeepSeek 的用量与余额。
 
 ## 4. 合规（联网识别、AI 上线前必须完成）
 - [ ] 把 `docs/privacy/mommy-diary-privacy.md` 交法务审核，并入正式隐私政策，再发布新版本。
