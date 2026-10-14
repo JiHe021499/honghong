@@ -25,12 +25,15 @@ class SupabaseCloudApi implements CloudApi {
     try {
       return await _c.rpc(fn, params: params) as T;
     } on PostgrestException catch (e) {
-      throw CloudException(switch (e.code) {
-        'P0001' => '这台手机已经在一个家庭里了',
-        'P0002' => '邀请码不对或已过期，请让家人刷新一下',
-        'P0003' => '只有创建者可以移除成员',
-        _ => '服务器出错：${e.message}',
-      });
+      throw CloudException(
+        switch (e.code) {
+          'P0001' => '这台手机已经在一个家庭里了',
+          'P0002' => '邀请码不对或已过期，请让家人刷新一下',
+          'P0003' => '只有创建者可以移除成员',
+          _ => '服务器出错：${e.message}',
+        },
+        code: e.code,
+      );
     }
   }
 
@@ -86,13 +89,18 @@ class SupabaseCloudApi implements CloudApi {
       _c.from('shared_babies').select().eq('family_id', familyId).maybeSingle();
 
   @override
-  Future<void> pushBaby(Map<String, dynamic> b) => _rpc<dynamic>('push_baby', {
-        'p_id': b['id'],
-        'p_nickname': b['nickname'],
-        'p_birth_date': b['birth_date'],
-        'p_updated_at': b['updated_at'],
-        'p_gender': b['gender'],
-      });
+  Future<void> pushBaby(Map<String, dynamic> b) {
+    final params = <String, dynamic>{
+      'p_id': b['id'],
+      'p_nickname': b['nickname'],
+      'p_birth_date': b['birth_date'],
+      'p_updated_at': b['updated_at'],
+    };
+    // 不要把 p_gender: null 传上去：线上旧签名没有这个参数，PostgREST 会 404。
+    final g = b['gender'];
+    if (g is String && g.isNotEmpty) params['p_gender'] = g;
+    return _rpc<dynamic>('push_baby', params);
+  }
 
   @override
   Future<void> pushCareLogs(List<Map<String, dynamic>> rows) => _rpc<dynamic>('push_care_logs', {'rows': rows});

@@ -13,6 +13,8 @@ class FakeServer {
   final clips = <String, Uint8List>{};
   final models = <String, Uint8List>{}; // storage path -> bytes
   Map<String, dynamic>? eligible; // eligible_model('classifier') 的返回
+  /// 模拟线上未跑 0004：带 gender 的 push_baby 报 PGRST202
+  bool rejectGenderInPush = false;
   int _seq = 0, _n = 0;
   String _stamp() => (++_seq).toString().padLeft(12, '0');
 
@@ -94,8 +96,15 @@ class FakeCloud implements CloudApi {
   @override
   Future<void> pushBaby(Map<String, dynamic> baby) async {
     _net();
+    if (s.rejectGenderInPush && baby.containsKey('gender') && baby['gender'] != null) {
+      throw CloudException('服务器出错：Could not find the function public.push_baby', code: 'PGRST202');
+    }
     final b = s.babies[_fid]!;
-    if (!DateTime.parse(b['updated_at']).isAfter(DateTime.parse(baby['updated_at']))) s.babies[_fid!] = {...baby};
+    if (!DateTime.parse(b['updated_at']).isAfter(DateTime.parse(baby['updated_at']))) {
+      final row = Map<String, dynamic>.of(baby);
+      if (s.rejectGenderInPush) row.remove('gender');
+      s.babies[_fid!] = row;
+    }
   }
 
   @override
