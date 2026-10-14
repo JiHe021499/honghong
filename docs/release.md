@@ -1,0 +1,139 @@
+# 发布与版本规则
+
+> 本文根据实际代码整理（2026-10-14）：`.github/workflows/android.yml`、`.github/workflows/ios.yml`、公开仓库 `JiHe021499/honghong-releases` 的 `.github/workflows/publish.yml`、`app/lib/services/update/update_service.dart`、`app/android/app/build.gradle.kts`、`backend/supabase/migrations/0001/0003`、`ml/src/publish_model.py`。改了这些文件请同步更新本文。
+
+## 1. 版本号
+
+| 场景 | versionName | versionCode | 渠道 |
+|---|---|---|---|
+| 推送到 `master` | `<pubspec 主.次>.<run_number>`，例如 `0.1.17` | `github.run_number`（Android APK 工作流的运行序号） | `dev`（预发布） |
+| 推送 `v*` 标签 | 标签去掉 `v`，例如 `v0.2.0` → `0.2.0` | 同上，仍是 `run_number` | `stable`（正式版） |
+
+- 主.次取自 `app/pubspec.yaml` 的 `version:`（目前 `0.1.0+1`，**只用前两段**，`+1` 和第三段不起作用）。要升到 0.2.x 就改 pubspec 为 `0.2.0+1`。
+- versionCode 只增不减（同一工作流的 run_number 单调递增，标签和分支推送共用一个计数），所以任何新包都能覆盖安装旧包。
+- 构建命令显式传 `--build-name/--build-number`，App 内 `PackageInfo.buildNumber` 就是 versionCode，更新检查用它比较。
+
+## 2. 什么会触发构建
+
+**Android APK**（`android.yml`）：
+- `push` 到 `master` 且改动了 `app/**` 或 `.github/workflows/android.yml`；
+- `push` 标签 `v*`（GitHub 对标签推送不看 paths 过滤）；
+- 手动 `workflow_dispatch`（当前分支，按 dev 处理）。
+- 只改 `docs/`、`ml/`、`backend/`、README 不会出包。
+- 同一 ref 新推送会取消正在跑的旧构建（`concurrency: cancel-in-progress`）。
+
+**iOS（未签名）**（`ios.yml`）：`master` 上改了 `app/**` 或 `ios.yml`，或手动触发。见第 7 节。
+
+## 3. Android 构建流程
+
+1. `flutter pub get` → `build_runner` → `flutter analyze` → `flutter test`（任何一步失败都不发布）。
+2. 从 secrets 写出 keystore 和 `android/key.properties`，构建：
+   `flutter build apk --release --target-platform android-arm64 --dart-define=SUPABASE_URL=… --dart-define=SUPABASE_ANON_KEY=…`
+   构建后立刻删除 keystore 和 key.properties。
+3. **只发 arm64**：`--target-platform android-arm64`，并在 `build.gradle.kts` 里排除 `x86/x86_64/armeabi-v7a` 的 .so（还排除了 TFLite GPU 库、压缩 .so）。32 位手机装不了。
+4. 生成 `meta.json`（见第 5 节），APK 也作为 Actions artifact 上传。
+5. 用部署密钥把 `meta.json` + `honghong-<版本>.apk` 推到公开仓库 `honghong-releases` 的 `upload/v<版本>` 分支（基于其 main 创建）。
+6. 公开仓库的 `publish.yml`（由 `upload/**` 推送触发，串行执行）：
+   - 用自己的 `GITHUB_TOKEN` 创建 Release `v<版本>`（dev 标为 Pre-release；**同名 Release 已存在会先删掉再建**），上传 APK（失败重试 5 次）；
+   - 更新 main 分支的 `version.json`；
+   - 把 `version.json` 也上传到滚动 Release `latest`；
+   - 删除上传分支。
+
+为什么分两个仓库：源码仓库私有，安装包和 version.json 放公开仓库，App 不需要任何令牌就能下载。
+
+### 签名与密钥（只写名字，不写内容）
+
+| 名称 | 位置 | 用途 |
+|---|---|---|
+| `ANDROID_KEYSTORE_BASE64` | honghong 仓库 Actions secret | 发布 keystore（base64），别名 `honghong` |
+| `ANDROID_KEYSTORE_PASSWORD` | 同上 | store/key 密码（相同） |
+| `RELEASES_DEPLOY_KEY` | 同上 | 对 `honghong-releases` 有写权限的 SSH 部署密钥（私钥）；公钥配在 honghong-releases 的 Deploy keys |
+| `SUPABASE_URL`、`SUPABASE_ANON_KEY` | 同上 | 编进 App 的云端地址和 **anon key**（绝不放 service_role）；没配时 App 离线运行 |
+
+- **备份**：keystore 和其属性文件备份在 box 的密钥目录 `/cursor/stores/store-48bb94bb-…/secrets/`（`honghong-release.jks`、`honghong-release.properties`），Supabase 配置在同目录 `supabase-nc_am.env`。**都不进仓库**。
+- **keystore 丢了就再也不能发能覆盖安装的更新**（Android 要求签名一致），务必再离线备份一份（例如加密 U 盘/密码管理器）。
+- 本地 `flutter build` 没有 `key.properties` 时自动退回 debug 签名，这种包不能覆盖装在已装正式签名版的手机上。
+
+### 旧签名说明（中兴等真机）
+
+固定发布签名是在提交 `862ebdf`（2026-10-13）引入的，在此之前 release 包用的是 debug 签名。手机上如果装的是那之前的包（例如最早在中兴手机上测试的版本），应用内更新会提示「安装包与已安装应用冲突」——**需要先卸载一次旧版再装新版**（本地数据会丢失，必要时先导出）。之后的版本签名不变，可以一直覆盖更新。
+
+## 4. 强制更新标记
+
+- 提交信息里含 `[强制更新]` 或 `[force]`（不区分大小写）。
+- CI 取「上次已发布版本的 commit（version.json 里的 `commit`）..HEAD」之间、`app/` 目录相关的提交信息作为更新日志（最多 30 条），**只要其中任一条带标记**，本次发布就 `force: true`，并把 `minSupportedVersionCode` 设为本次 versionCode。
+- App 端：`forced = 有更新 && (force || 当前 versionCode < minSupportedVersionCode)`。强制更新不能「稍后」，也不受「跳过此版本」影响。
+- 注意：下一次不带标记的发布会把 `minSupportedVersionCode` 写回 0，也就是说强制只对「直接跳到那一版」有效，见第 10 节。
+
+## 5. version.json 与应用内更新
+
+地址：`https://raw.githubusercontent.com/JiHe021499/honghong-releases/main/version.json`（另在 Release `latest` 附一份）。
+
+```json
+{
+  "versionName": "0.1.17", "versionCode": 17, "channel": "dev",
+  "apkUrl": "https://github.com/JiHe021499/honghong-releases/releases/download/v0.1.17/honghong-0.1.17.apk",
+  "apkName": "honghong-0.1.17.apk",
+  "sha256": "<64 位小写十六进制>", "size": 23210662,
+  "changelog": "- 提交信息…", "force": false, "minSupportedVersionCode": 0,
+  "commit": "<源码 commit>", "publishedAt": "2026-10-14T03:10:03Z",
+  "channels": { "dev": { …同上… }, "stable": { … } }
+}
+```
+
+顶层 = 最近一次发布（不论渠道）；`channels.<渠道>` = 各渠道最新一次。
+
+App（仅 Android，`inAppUpdateSupported`）：
+- 启动后自动检查，**最多每 6 小时一次**；设置 →「检查更新」手动检查不受限制。
+- 依次尝试：原地址 → `https://ghfast.top/` + 原地址 → `https://gh-proxy.com/` + 原地址（国内访问 GitHub 失败时的镜像）。请求带按分钟变化的 `t=` 参数绕过 CDN 缓存。
+- 必填字段：versionName、versionCode>0、apkUrl、64 位 sha256，缺了算解析失败。
+- 下载同样按原地址 → 镜像顺序；**下载后校验 sha256**，不一致删除文件、换下一个地址，全失败报「安装包校验失败」。已下载且校验通过的文件直接复用。
+- 「稍后」会记住跳过该 versionCode（自动检查不再弹，强制更新除外）。
+
+## 6. 发正式版（stable）步骤
+
+1. 确认 master 最新的 dev 版已在真机上验证（至少一台中兴/一台其他品牌）。
+2. 如需升次版本，先改 `app/pubspec.yaml` 的 `version:`（例如 `0.2.0+1`）并推送（会先出一个 dev 包）。
+3. 打标签并推送（标签名决定 versionName，**不要和已有 dev 版本号重名**，见第 10 节）：
+   ```bash
+   git tag -a v0.2.0 -m "哄哄 0.2.0"
+   git push origin v0.2.0
+   ```
+4. 等 Android APK 工作流和 honghong-releases 的「发布安装包」都成功；检查 Release `v0.2.0`（非 Pre-release）和 `version.json` 的 `channels.stable`。
+5. 需要所有人必须升级时，在标签所指提交（或这段区间里任一提交）的提交信息里带 `[强制更新]`。
+
+## 7. iOS
+
+- `ios.yml`：`macos-15` + 最新稳定版 Xcode，`flutter build ios --release --no-codesign`（同样传 Supabase dart-define），检查 `Runner.app/PlugIns/HonghongWidgets.appex` 和 `NSSupportsLiveActivities`，打包上传 artifact `honghong-ios-unsigned-<run_number>`（保留 14 天）。**未签名，不能装到手机，也不发布**。
+- 版本：`--build-name 0.1.<iOS 工作流 run_number> --build-number <run_number>`（计数和 Android 不同，见第 10 节）。
+- 以后（有 Apple 开发者账号后）：注册 `com.honghong.honghong` 和 `com.honghong.honghong.HonghongWidgets`、开启 App Group `group.com.honghong.honghong`；把证书/描述文件/App Store Connect API Key 放进 secrets；CI 改为签名构建并用 `xcrun altool`/fastlane 上传 TestFlight。iOS 不走应用内更新。
+
+## 8. 回滚与热修复
+
+APK 不能降级安装（versionCode 只能增），所以**回滚＝用旧代码发一个更高的版本号**：
+
+1. `git revert <坏提交>`（或修复），提交信息写清楚，必要时带 `[强制更新]`；推送 master → 自动出新 dev 包（versionCode 更大，所有人都能覆盖安装）。
+2. 正式版出问题：在修复后的提交上打新的补丁标签（例如 `v0.2.1`）。
+3. 想让 App 立刻停止推送坏版本：可以手动编辑 honghong-releases 的 `version.json`，把顶层和 `channels` 指回上一个好版本——但已经装了坏版本的人不会被"降级"，只能等修复版。
+4. 不要删除已发布的 Release 资产（已下载但未安装的用户、镜像缓存会失效）。
+
+## 9. 模型发布（分类模型 cls-*）
+
+模型不跟 App 发版，走 Supabase：
+
+- 训练与发布：`ml/src/train.py --version cls-N` → `ml/src/publish_model.py --env <secrets>/supabase-nc_am.env --build ../build --version cls-N --rollout <百分比>`（用 service_role，只在训练端/服务器上用）。
+- 文件：Storage 私有桶 `models`，路径 `models/classifier/{version}.tflite` 和 `.json`（meta：类别、特征规格、融合权重 blend.weight、自检样本、评估指标）。
+- 记录：`model_versions` 表（`kind='classifier'`、`rollout_percent`、sha256、meta），只有 service_role 能写，登录设备只读。
+- 灰度：RPC `eligible_model('classifier')` 按 `hashtext(auth.uid()) % 100 < rollout_percent` 分桶，取符合条件里 `released_at` 最新的一条。提高 rollout 就扩大范围；设为 0 即停止下发（已安装的不会自动卸载）。
+- App：同步时最多每 6 小时检查一次 → 下载 → 校验 sha256 → 加载并跑自检样本 → 设为当前；加载/推理失败的版本进黑名单并自动回退到上一个版本 → 内置模型（`assets/models/cry_head.*`）→ 只用规则。本地保留 2 个版本。
+- 现状：cls-1 已发布，`blend.weight = 0`（影子模式，不影响结果，原因见 `ml/README.md`）。
+
+## 10. 发现的不一致 / 待改进
+
+1. **App 不区分渠道**：`UpdateService.check()` 调 `ReleaseInfo.parse()` 时没传 `channel`，用的是顶层（最近一次发布，不论 dev/stable）。所以「正式版用户只收正式版」目前不成立，`channels` 字段没被使用。需要在 App 里加渠道设置（或按当前包的渠道）。
+2. **标签版本号可能和 dev 版本撞名**：dev 版本名是 `0.1.<run_number>`，如果打 `v0.1.20` 而 dev 也曾发过 `0.1.20`，`publish.yml` 会**删掉同名 Release 重建**，覆盖掉 dev 的包。正式版请用不会出现在 dev 序列里的号（如升次版本 `0.2.0`），或以后改为 dev 带后缀。
+3. **iOS 和 Android 版本号不一致**：两个工作流各自的 run_number 不同，同一提交的 iOS `0.1.x` 和 Android `0.1.y` 对不上；iOS 也不响应 `v*` 标签。上 TestFlight 前应统一（例如都用 commit 计数或共享的版本来源）。
+4. **pubspec 的 `+build` 和第三段没用**，容易误导；可以在 pubspec 注释里写明。
+5. **强制更新只维持一版**：下一次普通发布 `minSupportedVersionCode` 归 0，跳过强制版本、直接从更老版本升到更新版本的用户不会被强制。若需要「低于某版本必须升级」，应把 minSupportedVersionCode 做成持续继承的最大值。
+6. **更新日志只取 `app/` 目录的提交**（`git log … -- .` 在 app 目录执行），只改 CI/文档的提交不会出现在日志里（这是预期，但标记 `[强制更新]` 也必须写在动了 `app/` 的提交里才生效）。
+7. 迁移 0001 里的 `eligible_model` 没有 `coalesce`（uid 为空时出错），0003 已用 `create or replace` 修正，新库按顺序执行即可。

@@ -44,3 +44,5 @@ ML（第三阶段）：
 ```bash
 cd ml && python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
 ```
+
+发布与版本规则（版本号、触发条件、强制更新、签名、回滚、模型发布）：见 [docs/release.md](docs/release.md)。
