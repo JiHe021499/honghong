@@ -36,7 +36,8 @@ void main() {
       expect(tester.takeException(), isNull);
       final times = find.byKey(const Key('row-time'));
       expect(times, findsNWidgets(7));
-      if (scale <= 1.3) {
+      // CI 没有中文字体（测试默认字体每字一个方块，会触发窄屏换行布局），只在真实字体下检查对齐
+      if (realFont && scale <= 1.3) {
         final rights = times.evaluate().map((e) => tester.getRect(find.byWidget(e.widget)).right).toSet();
         expect(rights.length, 1, reason: '所有时间右边缘对齐 $rights');
       }
