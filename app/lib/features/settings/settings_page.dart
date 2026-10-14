@@ -13,6 +13,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/hh_widgets.dart';
 import '../../services/cloud/cloud_providers.dart';
+import '../diary/diary_providers.dart' show cloudAsrConsentProvider;
 import '../../services/lockscreen/lockscreen_controller.dart';
 import '../../services/lockscreen/lockscreen_notification.dart';
 import '../../services/lockscreen/quick_surfaces.dart';
@@ -125,6 +126,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final lock = ref.watch(lockscreenEnabledProvider);
     final night = ref.watch(nightModeProvider);
     final auto = ref.watch(autoListenProvider);
+    final cloudAsr = ref.watch(cloudAsrConsentProvider) == true;
     final baby = ref.watch(currentBabyProvider).value;
 
     Widget tile(String title, {String? sub, Widget? trailing, VoidCallback? onTap, Key? key, AppIcon? icon}) => ListTile(
@@ -219,6 +221,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 icon: AppIcon.autoListen,
                 sub: 'App 在前台时听到哭声自动开始录音（本地识别，不上传）',
                 trailing: Switch(value: auto, onChanged: (v) => ref.read(autoListenProvider.notifier).set(v)),
+              ),
+              tile(
+                '联网语音识别',
+                key: const Key('cloud-asr'),
+                icon: AppIcon.voice,
+                sub: '手机自带识别用不了时，把妈咪日记的录音实时发到讯飞转文字，不保存录音',
+                trailing: Switch(
+                  key: const Key('cloud-asr-switch'),
+                  value: cloudAsr,
+                  onChanged: (v) => ref.read(cloudAsrConsentProvider.notifier).set(v),
+                ),
               ),
               if (Platform.isIOS)
                 tile(

@@ -51,7 +51,10 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAskGender());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeAskGender();
+      ref.read(summaryTriggerProvider).kick();
+    });
   }
 
   @override
@@ -147,7 +150,7 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
     if (mounted) setState(() => mic = MicState.idle);
   }
 
-  bool? get _consent => ref.read(prefsProvider).getBool(kDiaryCloudAsrConsent);
+  bool? get _consent => ref.read(cloudAsrConsentProvider);
 
   /// 识别引擎不可用/出错：本机的 → 联网识别兜底（首次先告知）；联网的 → 屏 9。
   Future<void> _recognizerFailed(VoiceCapture cap) async {
@@ -160,10 +163,10 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
         final ok = await showCloudAsrConsentSheet(context);
         if (!mounted) return;
         if (ok == true) {
-          await ref.read(prefsProvider).setBool(kDiaryCloudAsrConsent, true);
+          await ref.read(cloudAsrConsentProvider.notifier).set(true);
           _snack('已换成联网识别，请再按住说一次');
         } else {
-          if (ok == false) await ref.read(prefsProvider).setBool(kDiaryCloudAsrConsent, false);
+          if (ok == false) await ref.read(cloudAsrConsentProvider.notifier).set(false);
           await _openText();
         }
       case true:

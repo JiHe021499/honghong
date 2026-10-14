@@ -8,6 +8,7 @@ import '../../domain/diary/parse_result.dart';
 import '../../features/diary/confirm_page.dart';
 import '../../features/diary/diary_page.dart';
 import '../../features/diary/diary_timeline_page.dart';
+import '../../features/diary/summary_page.dart';
 import '../../features/diary/text_input_page.dart';
 import '../../features/family/family_page.dart';
 import '../../features/feedback/feedback_page.dart';
@@ -38,6 +39,7 @@ class Routes {
   static const diaryText = '/diary/text';
   static const diaryConfirm = '/diary/confirm';
   static const diaryDay = '/diary/day';
+  static const diarySummary = '/diary/summary';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -67,6 +69,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           path: Routes.diaryDay,
           builder: (_, s) => DiaryTimelinePage(
               date: DateTime.tryParse(s.uri.queryParameters['date'] ?? ''), args: s.extra as DiaryDayArgs?)),
+      GoRoute(path: Routes.diarySummary, builder: (_, s) => SummaryPage(date: DateTime.tryParse(s.uri.queryParameters['date'] ?? ''))),
       GoRoute(path: Routes.diaryConfirm, builder: (_, s) => ConfirmPage(result: s.extra! as ParseResult)),
       GoRoute(path: Routes.update, builder: (_, s) => UpdatePage(initial: s.extra as UpdateCheck?)),
     ],

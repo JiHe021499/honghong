@@ -1,3 +1,6 @@
+import 'package:honghong/core/router/app_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:go_router/go_router.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -192,5 +195,84 @@ void main() {
       expect(find.byKey(const Key('voice-err-text')), findsOneWidget);
       await unmount(tester);
     });
+  
+  group('设置：联网语音识别开关', () {
+    late FakeVoice system, cloud;
+    Future<SharedPreferences> boot(WidgetTester tester, Map<String, Object> prefs) async {
+      tester.view.physicalSize = const Size(1170, 2532);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      system = FakeVoice(ok: false);
+      cloud = FakeVoice(text: '联网识别的一句话');
+      await pumpApp(tester, prefs: {kDiaryGenderPrompted: true, ...prefs}, overrides: [
+        diaryApiProvider.overrideWithValue(FakeApi(json: okJson)),
+        voiceCaptureProvider.overrideWithValue(system),
+        cloudVoiceCaptureProvider.overrideWithValue(cloud),
+        diaryClockProvider.overrideWithValue(Clock().call),
+      ]);
+      return SharedPreferences.getInstance();
+    }
+
+    Future<void> go(WidgetTester tester, String loc) async {
+      GoRouter.of(tester.element(find.byType(Scaffold).last)).go(loc);
+      await settle(tester, 10);
+    }
+
+    bool switchOn(WidgetTester tester) => tester.widget<Switch>(find.byKey(const Key('cloud-asr-switch'))).value;
+    Future<void> toggle(WidgetTester tester) async {
+      await tester.ensureVisible(find.byKey(const Key('cloud-asr-switch')));
+      await tester.tap(find.byKey(const Key('cloud-asr-switch')));
+      await settle(tester);
+    }
+
+    Future<void> hold(WidgetTester tester) async {
+      final g = await tester.startGesture(tester.getCenter(find.byKey(const Key('diary-mic'))));
+      await settle(tester, 3);
+      await g.up();
+      await settle(tester, 10);
+    }
+
+    testWidgets('未问过：开关默认关；打开后日记里不再弹告知，直接改用联网识别', (tester) async {
+      final sp = await boot(tester, const {});
+      await go(tester, Routes.settings);
+      expect(find.text('联网语音识别'), findsOneWidget);
+      expect(switchOn(tester), isFalse);
+      await toggle(tester);
+      expect(switchOn(tester), isTrue);
+      expect(sp.getBool(kDiaryCloudAsrConsent), isTrue);
+      await go(tester, Routes.diary);
+      await hold(tester);
+      expect(find.byKey(const Key('cloud-asr-agree')), findsNothing);
+      expect(find.text('本机识别不可用，已换成联网识别，请再说一次'), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets('首次告知里同意 → 设置显示已开；关掉后日记退回屏 9，不再弹告知', (tester) async {
+      final sp = await boot(tester, const {});
+      await go(tester, Routes.diary);
+      await hold(tester);
+      await tester.tap(find.byKey(const Key('cloud-asr-agree')));
+      await settle(tester, 10);
+      await tester.pump(const Duration(seconds: 3));
+      await go(tester, Routes.settings);
+      expect(switchOn(tester), isTrue);
+      await toggle(tester);
+      expect(switchOn(tester), isFalse);
+      expect(sp.getBool(kDiaryCloudAsrConsent), isFalse);
+      await go(tester, Routes.diary);
+      await hold(tester);
+      expect(find.byKey(const Key('cloud-asr-agree')), findsNothing);
+      expect(find.byKey(const Key('voice-err-text')), findsOneWidget);
+      expect(cloud.cancels, 0);
+      await unmount(tester);
+    });
+
+    testWidgets('首次告知里拒绝 → 设置显示关', (tester) async {
+      await boot(tester, const {kDiaryCloudAsrConsent: false});
+      await go(tester, Routes.settings);
+      expect(switchOn(tester), isFalse);
+      await unmount(tester);
+    });
   });
+});
 }

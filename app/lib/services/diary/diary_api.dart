@@ -25,6 +25,10 @@ class DiaryApiException implements Exception {
 abstract class DiaryApi {
   /// 一句话 → 卡片。只发文本、日龄、当前时间（含时区），不发小名/性别/宝宝 id（架构 §7）。
   Future<ParseResult> parse({required String text, required String inputType, required int ageInDays, required DateTime now});
+
+  /// 今日小结：只发聚合统计（架构 §4.3）。返回 (content, promptVersion)。
+  Future<({String content, String promptVersion})> summary(
+      {required String date, required int ageInDays, required Map<String, Object?> stats, required String idempotencyKey});
 }
 
 /// 本地时间带时区偏移的 ISO 字符串，例如 2026-10-14T20:31:00+08:00
@@ -75,6 +79,30 @@ class HttpDiaryApi implements DiaryApi {
     } catch (e) {
       if (e is DiaryApiException) rethrow;
       throw DiaryApiException(DiaryApiError.failed, '$e');
+    }
+  }
+
+  @override
+  Future<({String content, String promptVersion})> summary(
+      {required String date, required int ageInDays, required Map<String, Object?> stats, required String idempotencyKey}) async {
+    final String jwt;
+    try {
+      jwt = await token();
+    } catch (_) {
+      throw const DiaryApiException(DiaryApiError.network, 'auth');
+    }
+    try {
+      final r = await _dio.post<Map<String, dynamic>>('diary-summary',
+          data: {'date': date, 'age_in_days': ageInDays, 'stats': stats, 'idempotency_key': idempotencyKey},
+          options: Options(headers: {'authorization': 'Bearer $jwt'}));
+      final c = r.data?['content'];
+      if (c is! String || c.trim().isEmpty) throw const DiaryApiException(DiaryApiError.failed, 'empty');
+      return (content: c.trim(), promptVersion: (r.data?['prompt_version'] as String?) ?? 'unknown');
+    } on DioException catch (e) {
+      final code = e.response?.statusCode;
+      if (code == 429) throw const DiaryApiException(DiaryApiError.rateLimited);
+      if (code == null) throw DiaryApiException(DiaryApiError.network, e.type.name);
+      throw DiaryApiException(DiaryApiError.failed, '$code');
     }
   }
 }

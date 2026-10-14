@@ -100,6 +100,19 @@ void main() {
       return HttpDiaryApi(baseUrl: 'https://example.test/ai/', token: () async => 'jwt-x', dio: dio);
     }
 
+    test('小结：请求只含聚合统计与幂等键；429 → rateLimited', () async {
+      final a = api((o, b) => json('{"content":"今天喂奶 2 次。","prompt_version":"sum-v1"}'));
+      final r = await a.summary(date: '2026-10-14', ageInDays: 60, stats: const {'feed': {'count': 2}}, idempotencyKey: 'sid-1');
+      expect(adapter.last!.uri.toString(), 'https://example.test/ai/diary-summary');
+      expect(adapter.lastBody, contains('"idempotency_key":"sid-1"'));
+      expect(adapter.lastBody, contains('"age_in_days":60'));
+      expect(adapter.lastBody, isNot(contains('raw_text')));
+      expect(r.content, '今天喂奶 2 次。');
+      expect(r.promptVersion, 'sum-v1');
+      await expectLater(api((o, b) => json('{}', 429)).summary(date: '2026-10-14', ageInDays: 1, stats: const {}, idempotencyKey: 'k'),
+          throwsA(isA<DiaryApiException>().having((e) => e.kind, 'kind', DiaryApiError.rateLimited)));
+    });
+
     test('请求格式与成功解析', () async {
       final a = api((o, b) => json('{"status":"ok","prompt_version":"parse-v2","model":"deepseek-chat",'
           '"cards":[{"category":"feeding","kind":"event","event_time":"08:00","attributes":{"ml":120,"method":"formula"},"confidence":0.95}],'

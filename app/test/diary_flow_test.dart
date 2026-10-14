@@ -21,6 +21,17 @@ class FakeApi implements DiaryApi {
     if (error != null) throw error!;
     return ParseResult.fromGateway(json!, text: text, inputType: inputType, now: now);
   }
+
+  String summaryText = '今天宝宝喂奶 2 次，睡得还不错，妈妈辛苦了。';
+  final summaryCalls = <String>[];
+  @override
+  Future<({String content, String promptVersion})> summary(
+      {required String date, required int ageInDays, required Map<String, Object?> stats, required String idempotencyKey}) async {
+    summaryCalls.add('$date:$idempotencyKey');
+    await Future<void>.delayed(Duration.zero);
+    if (error != null) throw error!;
+    return (content: summaryText, promptVersion: 'sum-v1');
+  }
 }
 
 class FakeVoice implements VoiceCapture {
