@@ -22,24 +22,13 @@ SUPABASE_JWT_SECRET=xxx npm start   # 监听 127.0.0.1:8787
 cp .env.example .env   # 填 SUPABASE_JWT_SECRET（与 Supabase 的 JWT_SECRET 一致）
 docker compose up -d --build
 ```
-线上反代是 1Panel 的 OpenResty（nginx），在站点 proxy 配置里、`location / { return 404; }` 之前加（前缀剥离后转发）：
-```nginx
-location /ai/ {
-    proxy_pass http://127.0.0.1:8787/;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto https;
-    proxy_http_version 1.1;
-    proxy_read_timeout 30s;
-}
-```
-改前先备份，`nginx -t` 通过后 `nginx -s reload`。线上细节见 `backend/README.md`。
+线上反代是 1Panel 的 OpenResty（nginx），`/ai/` 前缀剥离后转发到 `127.0.0.1:8787`，已配好 WebSocket upgrade（`/diary-asr` 要用），超时 90s；http 层的 `map $http_upgrade $connection_upgrade` 写在 `conf.d/00-honghong-ws-map.conf`。
+现状和配置细节见 `backend/README.md` 的「AI 网关（妈咪日记）：nc_am 现状」一节。那里的「历史记录：P0 首次上线」一节是旧配置（30s、无 WebSocket），不要照抄。改反代前先备份，`nginx -t` 通过后再 `nginx -s reload`。
 App 侧地址即 `https://honghong.hczhw.com/ai/diary-parse`。
 
 ## 讯飞联网识别
 环境变量：`XFYUN_APPID`、`XFYUN_API_KEY`、`XFYUN_API_SECRET`（只放服务器 `.env`，不进仓库）。可选 `LIMIT_ASR_PER_DAY`（默认 60）。
-反向代理需转发 WebSocket Upgrade 头，见架构文档 §4.4。本机联调：
+反向代理需转发 WebSocket Upgrade 头（线上已配好，见上文），见架构文档 §4.4。本机联调：
 ```bash
 SUPABASE_JWT_SECRET=$S XFYUN_APPID=... XFYUN_API_KEY=... XFYUN_API_SECRET=... npm start
 ASR_SMOKE_JWT_SECRET=$S node eval/asr_smoke.js /tmp/a.pcm   # 16k/16bit/单声道 PCM
