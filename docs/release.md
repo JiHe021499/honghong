@@ -85,7 +85,7 @@
 
 - 提交信息里含 `[强制更新]` 或 `[force]`（不区分大小写）。
 - 更新说明（`changelog`）的来源按渠道不同：
-  - **dev**：CI 取「上次已发布版本的 commit（version.json 里的 `commit`）..HEAD」之间、`app/` 目录相关的提交信息（最多 30 条），并**去掉 `feat:`/`fix(scope):`/`test:`/`chore:`/`docs:` 等前缀和 scope**。
+  - **dev**：CI 取「上次已发布版本的 commit（version.json 里的 `commit`）..HEAD」之间、`app/` 目录相关的提交信息（最多 30 条）；`test:`/`ci:`/`chore:` 开头的条目**整条去掉**，其余**去掉 `feat:`/`fix(scope):`/`docs:` 等前缀和 scope**。强制更新标记按过滤前的完整提交信息判断。
   - **stable**：用**标签说明**（`git tag -a vX.Y.Z -F notes.md` 写进去的内容），由人工撰写。标签不是带说明的标签、或说明为空时，「发布前检查」直接报错，不会签名和发布。
 - 更新说明里**只要任一行带标记**，本次发布就 `force: true`，并把 `minSupportedVersionCode` 设为本次 versionCode。正式版要强制更新，就把 `[强制更新]` 写进标签说明。
 - App 端：`forced = 有更新 && (force || 当前 versionCode < minSupportedVersionCode)`。强制更新不能「稍后」，也不受「跳过此版本」影响。
@@ -218,10 +218,10 @@ sudo rm -rf $S/download.prev && sudo mv $S/download $S/download.prev && sudo mv 
 
 ### 11.1 二期：本站同步 APK、更新说明
 
-- `sync-version.sh` 在同步 version.json 的同时，把每个渠道当前版本的 APK 下载到 `download/files/<渠道>/<apkName>`：
+- `sync-version.sh` 在同步 version.json 的同时，把每个渠道当前版本的 APK 下载到 `download/files/<渠道>/<apkName 去掉 .apk>-<versionCode>-<sha256 前 8 位>.apk`（例如 `honghong-0.1.19-19-418a7796.apk`；内容一变文件名就变，Cloudflare 缓存 APK 1 天也不会拿到旧包）：
   - 只接受 `https://github.com/JiHe021499/honghong-releases/releases/download/` 下的地址；
   - 先下到同目录的临时文件，**大小和 sha256 都和 version.json 一致**才 `rename` 成正式文件（原子替换），否则丢弃；
-  - 校验通过后在 `data/version.json` 的 `channels.<渠道>` 里写 `localApkUrl`（如 `/download/files/dev/honghong-0.1.19.apk`）。下载失败或校验失败就不写，页面自动用 GitHub 地址；
+  - 校验通过后在 `data/version.json` 的 `channels.<渠道>` 里写 `localApkUrl`（如 `/download/files/dev/honghong-0.1.19-19-418a7796.apk`）。下载失败或校验失败就不写，页面自动用 GitHub 地址；
   - 每个渠道保留最近 3 个 APK（`HH_KEEP`），当前版本永远不删；磁盘剩余低于 2 GB（`HH_MIN_FREE_MB`）时不下载；
   - 用文件锁防止上一轮没跑完时重入；已校验过的文件记在 `.sha256` 标记里，之后每 5 分钟不重复算哈希。
 - 页面：有 `localApkUrl` 时主按钮走本站，下面给一个「从 GitHub 下载」的备用链接；拿不到本站数据时退回 raw.githubusercontent.com，只有 GitHub 地址。
@@ -231,8 +231,9 @@ sudo rm -rf $S/download.prev && sudo mv $S/download $S/download.prev && sudo mv 
 **二期上线（需本人确认后执行；一期已上线，只替换页面、脚本和 conf）**
 ```sh
 # box 上
-cd /workspace/honghong/web/download
-tar czf /tmp/download-page.tgz index.html beta assets
+cd /workspace/honghong && git checkout master && git pull
+web/download/deploy/pack.sh /tmp/download-page.tgz      # 给 css/js 加 ?v=<提交号>，工作区有改动会拒绝打包
+cd web/download
 scp /tmp/download-page.tgz deploy/sync-version.sh deploy/download.conf nc-am:/tmp/
 # nc_am 上
 TS=$(date +%Y%m%d-%H%M%S); S=/opt/1panel/www/sites/honghong.hczhw.com
@@ -255,10 +256,14 @@ sudo rm -rf $S/download.prev && sudo mv $S/download $S/download.prev && sudo mv 
 # crontab 不用改（还是同一个脚本路径）
 # 验证
 H=https://honghong.hczhw.com
-curl -sI $H/download/files/dev/honghong-0.1.19.apk | grep -iE '^HTTP|content-type|content-length|disposition'   # 200、package-archive、23401036、attachment
-curl -s -o /dev/null -w '%{http_code}\n' $H/download/files/dev/honghong-0.1.19.apk.sha256                      # 404
-curl -s $H/download/files/dev/honghong-0.1.19.apk | sha256sum                                                     # 与 version.json 的 sha256 一致
-curl -s $H/download/data/version.json | grep -c localApkUrl
+A=$(curl -s "$H/download/data/version.json?x=$RANDOM" | python3 -c "import json,sys;print(json.load(sys.stdin)['channels']['dev']['localApkUrl'])"); echo $A   # /download/files/dev/honghong-<版本>-<code>-<sha8>.apk
+curl -sI $H$A | grep -iE '^HTTP|content-type|content-length|disposition'   # 200、package-archive、大小、attachment
+curl -s -o /dev/null -w '%{http_code}\n' $H$A.sha256                      # 404
+curl -s $H$A | sha256sum                                                  # 与 version.json 的 sha256 一致
+curl -sI $H/download/ | grep -iE 'cf-cache-status|cache-control'          # DYNAMIC、no-cache（HTML 不被 CDN 缓存）
+curl -sI "$H/download/data/version.json?x=$RANDOM" | grep -iE 'cf-cache-status|cache-control'   # DYNAMIC、max-age=60
+curl -s $H/download/beta/ | grep -oE 'assets/app\.js\?v=[0-9a-f]+'           # 带上本次提交号
+curl -s "$H$(curl -s $H/download/beta/ | grep -oE '/?assets/app\.js\?v=[0-9a-f]+' | sed 's#^/\?#/download/beta/../#')" | grep -c localApkUrl   # ≥1：拿到的是新 app.js
 for u in /download /download/ /download/beta/ /ai/healthz /rest/v1/ /; do curl -s -o /dev/null -w "$u %{http_code}\n" $H$u; done   # 301 200 200 200 401 404
 ```
 
@@ -272,4 +277,11 @@ sudo rm -rf $S/download && sudo mv $S/download.prev $S/download
 sudo /opt/honghong-download/sync-version.sh          # 用旧脚本重写 version.json，去掉 localApkUrl
 sudo rm -rf $S/download.prev/files                   # 可选：删掉已下载的 APK
 ```
-页面旧版本不认识 `localApkUrl`，所以回滚后即使 version.json 里还留着它也只会继续用 GitHub 地址。
+回滚后旧 HTML 引用的是旧的 `?v=`（或不带 `?v=`）资源地址，Cloudflare 会按旧地址给旧文件，不会混用。页面旧版本不认识 `localApkUrl`，所以回滚后即使 version.json 里还留着它也只会继续用 GitHub 地址。
+
+**缓存约定（2026-10-14 产品决定）**
+- HTML：`no-cache`，Cloudflare 不缓存（`cf-cache-status: DYNAMIC`，已在线上核实）。
+- css/js：Cloudflare 会缓存（边缘最长 4 小时），所以 HTML 里一律引用 `assets/xxx?v=<提交号>`，**必须用 `pack.sh` 打包**，不要再直接 tar。
+- version.json：`max-age=60`，Cloudflare 不缓存（DYNAMIC）；页面请求还带按分钟变化的 `t=` 参数。备用的 raw.githubusercontent.com 自身缓存 5 分钟。
+- APK：Cloudflare 缓存 1 天；文件名带 versionCode 和 sha256 片段，同名文件内容不会变。
+- 同一个版本号不允许重新发布：android.yml 的「发布前检查：版本号未被占用」用 `git ls-remote` 查 honghong-releases 的标签，已存在就报错。dev 版要重发请重新手动触发（会得到新的 run_number），不要 Re-run。

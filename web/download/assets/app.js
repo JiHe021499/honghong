@@ -34,7 +34,10 @@
   }
   function fmtSize(n){ n=+n; return n>0 ? (n/1048576).toFixed(1)+' MB' : '' }
   function notesOf(cl){
-    return String(cl||'').split('\n').map(function(l){return l.replace(/^\s*[-*•]\s*/,'')
+    return String(cl||'').split('\n').map(function(l){return l.replace(/^\s*[-*•]\s*/,'')})
+      // 测试、CI、杂务类条目整条不显示（发版工作流也会过滤，这里兼容旧数据）
+      .filter(function(l){return !/^(tests?|ci|chore)(\([^)]*\))?!?[:：]/i.test(l)})
+      .map(function(l){return l
       // 发版工作流已去掉 feat:/fix: 等前缀；这里兼容旧版本数据
       .replace(/^(feat|fix|tests?|chore|docs?|refactor|perf|ci|build|style|revert)(\([^)]*\))?!?[:：]\s*/i,'').trim()})
       .filter(Boolean).slice(0,8);
