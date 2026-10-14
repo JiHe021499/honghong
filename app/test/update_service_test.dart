@@ -200,4 +200,71 @@ void main() {
       expect(a.hits.length, 1);
     });
   });
+
+  group('本站下载（localApkUrl）', () {
+    const site = UpdateService.siteSource;
+    const localPath = '/download/files/dev/honghong-0.1.42-42-aaaaaaaa.apk';
+    const localUrl = 'https://honghong.hczhw.com$localPath';
+    Map<String, Object?> siteJson() => {...versionJson(), 'localApkUrl': localPath};
+    late Directory dir;
+    setUp(() async => dir = await Directory.systemTemp.createTemp('upd'));
+    tearDown(() => dir.delete(recursive: true));
+
+    test('解析：相对路径按来源地址补全；没有字段时为 null（兼容 GitHub 原件）', () {
+      expect(ReleaseInfo.parse(siteJson(), source: Uri.parse(site)).localApkUrl, localUrl);
+      expect(ReleaseInfo.parse(versionJson(), source: Uri.parse(site)).localApkUrl, isNull);
+      expect(ReleaseInfo.parse(siteJson()).localApkUrl, isNull, reason: '不知道来源就不猜');
+    });
+    test('解析：非法或非 https 的 localApkUrl 忽略，不影响其它字段', () {
+      for (final bad in [123, '', 'http://honghong.hczhw.com/x.apk', 'ftp://a/b.apk', '/download/files/x.txt']) {
+        final i = ReleaseInfo.parse({...versionJson(), 'localApkUrl': bad}, source: Uri.parse(site));
+        expect(i.localApkUrl, isNull, reason: '$bad');
+        expect(i.versionCode, 42);
+      }
+      expect(ReleaseInfo.parse({...versionJson(), 'localApkUrl': 'https://cdn.example.com/a.apk'}).localApkUrl,
+          'https://cdn.example.com/a.apk');
+    });
+    test('检查更新先读本站副本，带上 localApkUrl', () async {
+      final a = FakeAdapter({site: jsonEncode(siteJson()), src: jsonEncode(versionJson())});
+      final r = await svc(a).check(manual: true);
+      expect(r!.info.localApkUrl, localUrl);
+      expect(a.hits.single, startsWith(site));
+    });
+    test('本站副本拿不到时读 GitHub：没有 localApkUrl，本站地址不走 GitHub 镜像', () async {
+      final a = FakeAdapter({site: 502, src: jsonEncode(versionJson())});
+      final r = await svc(a).check(manual: true);
+      expect(r!.info.localApkUrl, isNull);
+      expect(a.hits.where((h) => h.contains('ghfast') && h.contains('hczhw')), isEmpty);
+    });
+    test('下载优先本站，校验 sha256', () async {
+      final a = FakeAdapter({localUrl: apkBytes, apkUrl: [9, 9, 9]});
+      final info = ReleaseInfo.parse(siteJson(), source: Uri.parse(site));
+      final f = await svc(a).download(info, dir);
+      expect(await UpdateService.verify(f, apkSha), isTrue);
+      expect(a.hits, [localUrl]);
+    });
+    test('本站失败（出错或哈希不对）回退 GitHub', () async {
+      final info = ReleaseInfo.parse(siteJson(), source: Uri.parse(site));
+      for (final local in <Object>[404, [1, 2, 3]]) {
+        final d = await dir.createTemp();
+        final a = FakeAdapter({localUrl: local, apkUrl: apkBytes});
+        final f = await svc(a).download(info, d);
+        expect(await UpdateService.verify(f, apkSha), isTrue, reason: '$local');
+        expect(a.hits, [localUrl, apkUrl]);
+      }
+    });
+    test('本站和 GitHub 都给了坏包：报校验失败，不留文件', () async {
+      final info = ReleaseInfo.parse(siteJson(), source: Uri.parse(site));
+      final a = FakeAdapter({localUrl: [1], apkUrl: [2], 'https://ghfast.top/': [3], 'https://gh-proxy.com/': [4]});
+      await expectLater(svc(a).download(info, dir), throwsA(isA<ShaMismatchException>()));
+      expect(dir.listSync(), isEmpty);
+      expect(a.hits.first, localUrl);
+      expect(a.hits.length, 4);
+    });
+    test('没有 localApkUrl 时下载顺序和原来一样', () {
+      final s = svc(FakeAdapter({}));
+      expect(s.apkCandidates(ReleaseInfo.parse(versionJson())), s.candidates(apkUrl));
+      expect(s.candidates(localUrl), [localUrl]);
+    });
+  });
 }

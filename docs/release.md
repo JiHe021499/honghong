@@ -111,9 +111,9 @@
 
 App（仅 Android，`inAppUpdateSupported`）：
 - 启动后自动检查，**最多每 6 小时一次**；设置 →「检查更新」手动检查不受限制。
-- 依次尝试：原地址 → `https://ghfast.top/` + 原地址 → `https://gh-proxy.com/` + 原地址（国内访问 GitHub 失败时的镜像）。请求带按分钟变化的 `t=` 参数绕过 CDN 缓存。
+- version.json 依次尝试：本站副本 `https://honghong.hczhw.com/download/data/version.json`（带 `localApkUrl`）→ GitHub 原件 → `https://ghfast.top/` + 原件 → `https://gh-proxy.com/` + 原件（镜像只用于 GitHub 地址）。请求带按分钟变化的 `t=` 参数绕过 CDN 缓存。
 - 必填字段：versionName、versionCode>0、apkUrl、64 位 sha256，缺了算解析失败。
-- 下载同样按原地址 → 镜像顺序；**下载后校验 sha256**，不一致删除文件、换下一个地址，全失败报「安装包校验失败」。已下载且校验通过的文件直接复用。
+- 下载顺序：`localApkUrl`（有的话，相对路径按 version.json 来源补全，只接受 https）→ GitHub 原地址 → 镜像。线上还没有 `localApkUrl` 时与原来完全一样；**下载后校验 sha256**，不一致删除文件、换下一个地址，全失败报「安装包校验失败」。已下载且校验通过的文件直接复用。
 - 「稍后」会记住跳过该 versionCode（自动检查不再弹，强制更新除外）。
 
 ## 6. 发正式版（stable）步骤

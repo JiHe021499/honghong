@@ -19,6 +19,7 @@ class ReleaseInfo {
     this.minSupportedVersionCode = 0,
     this.channel = 'dev',
     this.publishedAt,
+    this.localApkUrl,
   });
 
   final String versionName;
@@ -32,8 +33,13 @@ class ReleaseInfo {
   final String channel;
   final DateTime? publishedAt;
 
+  /// 本站（honghong.hczhw.com）同步并校验过的安装包地址，已解析为绝对地址。
+  /// 只有服务器上的 version.json 副本才有；GitHub 上的原件没有这个字段，为 null 时直接用 [apkUrl]。
+  final String? localApkUrl;
+
   /// 解析 version.json。[channel] 指定时优先取 channels[channel]，否则取顶层（最新一次发布）。
-  static ReleaseInfo parse(Map<String, dynamic> json, {String? channel}) {
+  /// [source] 是 version.json 的来源地址，用来解析相对的 localApkUrl。
+  static ReleaseInfo parse(Map<String, dynamic> json, {String? channel, Uri? source}) {
     var j = json;
     final chans = json['channels'];
     if (channel != null && chans is Map && chans[channel] is Map) {
@@ -58,7 +64,18 @@ class ReleaseInfo {
       minSupportedVersionCode: toInt(j['minSupportedVersionCode']),
       channel: (j['channel'] as String?) ?? 'dev',
       publishedAt: DateTime.tryParse('${j['publishedAt']}'),
+      localApkUrl: _resolveLocal(j['localApkUrl'], source),
     );
+  }
+
+  /// localApkUrl 可以是相对路径（相对 version.json 的来源）或 https 绝对地址；其它情况一律忽略，不影响解析。
+  static String? _resolveLocal(Object? v, Uri? source) {
+    if (v is! String || v.isEmpty) return null;
+    final u = Uri.tryParse(v);
+    if (u == null) return null;
+    final abs = u.hasScheme ? u : source?.resolveUri(u);
+    if (abs == null || abs.scheme != 'https' || abs.host.isEmpty || !abs.path.endsWith('.apk')) return null;
+    return abs.toString();
   }
 }
 
@@ -93,7 +110,10 @@ class UpdateService {
   }) : _now = clock ?? AppClock.now;
 
   static const releasesRepo = 'JiHe021499/honghong-releases';
-  static const defaultSources = ['https://raw.githubusercontent.com/$releasesRepo/main/version.json'];
+
+  /// 先读本站副本（带 localApkUrl，国内访问稳定），失败再读 GitHub 原件（没有 localApkUrl）。
+  static const siteSource = 'https://honghong.hczhw.com/download/data/version.json';
+  static const defaultSources = [siteSource, 'https://raw.githubusercontent.com/$releasesRepo/main/version.json'];
 
   /// GitHub 访问不了时的镜像前缀（ghproxy 风格：前缀 + 原始 URL），按顺序尝试，可改
   static const defaultMirrors = ['https://ghfast.top/', 'https://gh-proxy.com/'];
@@ -116,8 +136,16 @@ class UpdateService {
     return _now().difference(DateTime.fromMillisecondsSinceEpoch(last)) >= interval;
   }
 
-  /// 依次尝试的地址：原地址，再加各镜像
-  List<String> candidates(String url) => [url, for (final m in mirrorPrefixes) '$m$url'];
+  /// 依次尝试的地址：原地址，再加各镜像（镜像只代理 GitHub 的地址）
+  List<String> candidates(String url) {
+    final host = Uri.tryParse(url)?.host ?? '';
+    final github = host == 'github.com' || host.endsWith('.github.com') || host.endsWith('githubusercontent.com');
+    return [url, if (github) for (final m in mirrorPrefixes) '$m$url'];
+  }
+
+  /// 下载安装包依次尝试的地址：本站（有的话）→ GitHub → GitHub 镜像
+  List<String> apkCandidates(ReleaseInfo info) =>
+      [if (info.localApkUrl != null && info.localApkUrl != info.apkUrl) info.localApkUrl!, ...candidates(info.apkUrl)];
 
   /// 检查更新。[manual] 为 false 时受节流限制，没到点返回 null。
   Future<UpdateCheck?> check({bool manual = false}) async {
@@ -131,7 +159,7 @@ class UpdateService {
             queryParameters: {'t': _now().millisecondsSinceEpoch ~/ 60000}, // 绕过 CDN 缓存（按分钟）
             options: Options(responseType: ResponseType.plain, receiveTimeout: const Duration(seconds: 10)),
           );
-          final info = ReleaseInfo.parse(Map<String, dynamic>.from(jsonDecode(r.data ?? '') as Map));
+          final info = ReleaseInfo.parse(Map<String, dynamic>.from(jsonDecode(r.data ?? '') as Map), source: Uri.parse(src));
           await prefs.setInt(lastCheckKey, _now().millisecondsSinceEpoch);
           return UpdateCheck(info, currentCode);
         } catch (e) {
@@ -154,7 +182,7 @@ class UpdateService {
     if (await file.exists() && await verify(file, info.sha256)) return file; // 已经下好了
     Object? lastError;
     ShaMismatchException? mismatch;
-    for (final url in candidates(info.apkUrl)) {
+    for (final url in apkCandidates(info)) {
       try {
         await dio.download(url, file.path, onReceiveProgress: onProgress, cancelToken: cancel);
         if (!await verify(file, info.sha256)) {
@@ -166,6 +194,7 @@ class UpdateService {
       } on DioException catch (e) {
         if (CancelToken.isCancel(e)) rethrow;
         lastError = e;
+        if (await file.exists()) await file.delete(); // 下了一半的不留，换下一个地址重下
       } on ShaMismatchException catch (e) {
         mismatch = e;
       }
