@@ -1,11 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../core/prefs.dart';
 import '../../core/providers.dart';
@@ -13,10 +11,10 @@ import '../../core/router/app_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_icon.dart';
 import '../../data/repositories/diary_repository.dart';
-import '../../domain/diary/diary_card.dart';
-import '../../domain/diary/diary_card_db.dart';
 import '../../domain/diary/parse_result.dart';
 import 'confirm_page.dart' show kEditRaw;
+import 'diary_entry_row.dart';
+import 'diary_timeline_page.dart' show DiaryDayArgs, aggregateIdsProvider, timelineOrder;
 import 'diary_flow.dart';
 import 'diary_providers.dart';
 import 'diary_sheets.dart';
@@ -39,8 +37,6 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
   Timer? _tick;
   Offset? _down;
   bool _starting = false;
-  ({String title, String sub})? toast;
-  Timer? _toastTimer;
 
   /// 上滑超过这个距离进入“松手取消”
   static const cancelDy = 80.0;
@@ -54,7 +50,6 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
   @override
   void dispose() {
     _tick?.cancel();
-    _toastTimer?.cancel();
     if (mic == MicState.recording || mic == MicState.cancelZone) ref.read(voiceCaptureProvider).cancel();
     super.dispose();
   }
@@ -162,21 +157,18 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
   Future<void> _confirm(ParseResult r) async {
     final saved = await context.push<int>(Routes.diaryConfirm, extra: r);
     if (saved == kEditRaw) return _openText(initial: r.rawText);
-    if (saved != null && saved > 0) _showSaved(saved);
+    if (saved != null && saved > 0) _afterSave(saved);
   }
 
   Future<void> _openText({String? initial}) async {
     final saved = await context.push<int>(Routes.diaryText, extra: initial);
-    if (saved != null && saved > 0) _showSaved(saved);
+    if (saved != null && saved > 0) _afterSave(saved);
   }
 
-  void _showSaved(int n) {
+  /// 保存成功 → 进入当日时间线并提示（屏 16）
+  void _afterSave(int n) {
     if (!mounted) return;
-    _toastTimer?.cancel();
-    setState(() => toast = (title: '已保存 $n 条', sub: '在日记里可以随时修改'));
-    _toastTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted) setState(() => toast = null);
-    });
+    context.push(Routes.diaryDay, extra: DiaryDayArgs(savedCount: n));
   }
 
   void _snack(String s) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s), duration: const Duration(seconds: 2)));
@@ -209,13 +201,6 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
             const SizedBox(height: 14),
             _TodayList(entries: entries),
           ]),
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 220),
-            top: toast == null ? -120 : 8,
-            left: 20,
-            right: 20,
-            child: toast == null ? const SizedBox() : DiaryToast(title: toast!.title, subtitle: toast!.sub),
-          ),
         ]),
       ),
     );
@@ -444,7 +429,15 @@ class _TodayList extends ConsumerWidget {
     final c = context.hh;
     final title = Padding(
       padding: const EdgeInsets.only(top: 6, bottom: 10),
-      child: Text('今天的日记', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: c.ink)),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+        Expanded(child: Text('今天的日记', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: c.ink))),
+        if (entries.isNotEmpty)
+          GestureDetector(
+            key: const Key('diary-all'),
+            onTap: () => context.push(Routes.diaryDay),
+            child: Text('查看全部 ›', style: TextStyle(fontSize: 12, color: c.sub)),
+          ),
+      ]),
     );
     if (entries.isEmpty) {
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -466,100 +459,17 @@ class _TodayList extends ConsumerWidget {
         ),
       ]);
     }
-    final rows = entries.reversed.take(6).toList();
+    final now = DateTime.now();
+    final aggs = ref.watch(aggregateIdsProvider(DateTime(now.year, now.month, now.day))).value ?? const <String>{};
+    final rows = timelineOrder(entries, aggregates: aggs).take(2).toList();
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       title,
       Container(
         padding: const EdgeInsets.symmetric(vertical: 4),
         decoration: BoxDecoration(color: c.card, borderRadius: BorderRadius.circular(18)),
-        child: Column(children: [for (var i = 0; i < rows.length; i++) _EntryRow(entry: rows[i], last: i == rows.length - 1)]),
+        child: Column(children: [for (var i = 0; i < rows.length; i++) DiaryEntryRow(entry: rows[i], last: i == rows.length - 1)]),
       ),
     ]);
   }
 }
 
-final _entryDetailProvider = FutureProvider.autoDispose.family<({String text, String? mark, String time, DiaryCategory cat, bool aggregate}), TimelineEntry>((ref, e) async {
-  final db = ref.watch(databaseProvider);
-  final hm = DateFormat('HH:mm');
-  if (e.isCareLog) {
-    final log = await ref.watch(careLogRepositoryProvider).byId(e.id);
-    final cat = switch (e.type) { 'feed' => DiaryCategory.feeding, 'sleep' => DiaryCategory.sleep, 'diaper' => DiaryCategory.diaper, _ => DiaryCategory.other };
-    if (log == null) return (text: cat.label, mark: null, time: hm.format(e.sortTime), cat: cat, aggregate: false);
-    final card = await ref.watch(diaryRepositoryProvider).cardForCareLog(log.id);
-    final d = DiaryCardDraftUi(
-      category: cat,
-      aggregate: false,
-      eventTime: log.startedAt,
-      endTime: log.endedAt == log.startedAt ? null : log.endedAt,
-      diaryDate: log.startedAt,
-      sortTime: log.startedAt,
-      attributes: _attrsFromLog(e.type, log.detail, log.startedAt, log.endedAt),
-      note: card?.note,
-      intensity: card?.intensity,
-    );
-    return (text: _plain(d), mark: d.intensity, time: hm.format(log.startedAt), cat: cat, aggregate: false);
-  }
-  final card = await (db.select(db.diaryCards)..where((x) => x.id.equals(e.id))).getSingleOrNull();
-  final cat = DiaryCategory.parse(card?.category);
-  if (card == null) return (text: cat.label, mark: null, time: '', cat: cat, aggregate: false);
-  final d = cardFromDb(card);
-  return (text: _plain(d), mark: d.intensity, time: cardTimeLabel(d), cat: cat, aggregate: d.aggregate);
-});
-
-Map<String, Object?> _attrsFromLog(String type, String? detail, DateTime s, DateTime? e) {
-  final m = <String, Object?>{};
-  final j = detail == null ? null : _tryJson(detail);
-  if (type == 'feed') {
-    if (j?['method'] == 'breast') m['method'] = 'breast';
-    if (j?['method'] == 'bottleBreast') m['method'] = 'bottle_breast';
-    if (j?['method'] == 'formula') m['method'] = 'formula';
-    if (j?['side'] is String) m['side'] = j!['side'];
-    if (j?['ml'] is int) m['ml'] = j!['ml'];
-  }
-  if (type == 'diaper' && j?['diaper'] is String && ['pee', 'poo', 'both'].contains(j!['diaper'])) m['type'] = j['diaper'];
-  if (e != null && e != s && (type == 'feed' || type == 'sleep')) m['duration_min'] = e.difference(s).inMinutes;
-  return m;
-}
-
-Map<String, dynamic>? _tryJson(String s) {
-  try {
-    return Map<String, dynamic>.from(jsonDecode(s) as Map);
-  } catch (_) {
-    return null;
-  }
-}
-
-String _plain(DiaryCardDraftUi d) {
-  final t = cardText(d);
-  return t.main.whereType<TextSpan>().map((s) => s.text ?? '').join().replaceAll(RegExp(r' · $'), '');
-}
-
-class _EntryRow extends ConsumerWidget {
-  const _EntryRow({required this.entry, required this.last});
-  final TimelineEntry entry;
-  final bool last;
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final c = context.hh;
-    final d = ref.watch(_entryDetailProvider(entry)).value;
-    if (d == null) return const SizedBox(height: 44);
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 14),
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: c.line))),
-      child: Row(children: [
-        CategoryTile(d.cat, size: 34),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text.rich(TextSpan(children: [
-            TextSpan(text: d.text),
-            if (d.mark != null) ...[const TextSpan(text: ' · '), markSpan(d.mark!)],
-            if (entry.isQuick) const WidgetSpan(alignment: PlaceholderAlignment.middle, child: DiaryTag('快捷记录', quick: true)),
-            if (d.aggregate) const WidgetSpan(alignment: PlaceholderAlignment.middle, child: DiaryTag('汇总')),
-          ]), style: TextStyle(fontSize: 14, color: c.ink)),
-        ),
-        Text(d.time, style: TextStyle(fontSize: 12, color: c.sub)),
-      ]),
-    );
-  }
-}

@@ -7,6 +7,7 @@ import '../../features/cry/result_page.dart';
 import '../../domain/diary/parse_result.dart';
 import '../../features/diary/confirm_page.dart';
 import '../../features/diary/diary_page.dart';
+import '../../features/diary/diary_timeline_page.dart';
 import '../../features/diary/text_input_page.dart';
 import '../../features/family/family_page.dart';
 import '../../features/feedback/feedback_page.dart';
@@ -36,6 +37,7 @@ class Routes {
   static const diary = '/diary';
   static const diaryText = '/diary/text';
   static const diaryConfirm = '/diary/confirm';
+  static const diaryDay = '/diary/day';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -61,6 +63,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       // 妈咪日记：顶层二级页，无底部标签栏
       GoRoute(path: Routes.diary, builder: (_, _) => const DiaryPage()),
       GoRoute(path: Routes.diaryText, builder: (_, s) => TextInputPage(initial: s.extra as String?)),
+      GoRoute(
+          path: Routes.diaryDay,
+          builder: (_, s) => DiaryTimelinePage(
+              date: DateTime.tryParse(s.uri.queryParameters['date'] ?? ''), args: s.extra as DiaryDayArgs?)),
       GoRoute(path: Routes.diaryConfirm, builder: (_, s) => ConfirmPage(result: s.extra! as ParseResult)),
       GoRoute(path: Routes.update, builder: (_, s) => UpdatePage(initial: s.extra as UpdateCheck?)),
     ],
