@@ -16,6 +16,7 @@ import '../../domain/models/care_log_type.dart';
 import '../../services/audio/auto_listen.dart';
 import '../care/care_actions.dart';
 import '../care/care_log_row.dart';
+import '../diary/diary_entry_card.dart';
 
 /// 首页（设计稿 01/02/04/06/08/10，夜间 14）
 class HomePage extends ConsumerStatefulWidget {
@@ -102,6 +103,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         ),
         if (night) const _VoiceHint() else ...[
           const SizedBox(height: 6),
+          const DiaryEntryCard(),
           _Timeline(
             active: active,
             justDiaperId: _toastVisible ? _justDiaperId : null,
