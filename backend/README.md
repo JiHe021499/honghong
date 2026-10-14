@@ -36,7 +36,9 @@ location /auth/v1/ { proxy_pass http://127.0.0.1:8000; }
 - 已执行 0001 + 0002；公网验证：匿名注册、家庭创建/加入、外人隔离、Storage 按设备目录隔离均通过，测试用户已删除
 - 备份：`redeploy/backup.sh` → `/opt/honghong-supabase/backup.sh`，crontab 每天 03:30（服务器时间 CEST）
 
-## 妈咪日记 AI 网关：nc_am 线上部署（2026-10-14，P0，未接 LLM）
+## 历史记录：妈咪日记 AI 网关 P0 首次上线（2026-10-14，已过时）
+
+> ⚠️ 这是 P0 时期的记录，下面的反代片段已经过时：当时超时 30s、没有 WebSocket、没接 LLM。**现状以下文「[AI 网关（妈咪日记）：nc_am 现状](#ai-网关妈咪日记nc_am-现状)」为准**。现在 `/ai/` 已配好 WebSocket，超时 90s，http 层的 map 在 `conf.d/00-honghong-ws-map.conf`；部署的是 asr 版本，配了讯飞，没配 DeepSeek。目录、容器名、更新和回滚步骤仍然适用。
 
 - 目录：`/opt/honghong-ai-gateway`（feat/mommy-diary-p0 分支 `backend/ai-gateway` 的 Dockerfile、docker-compose.yml、package.json、src）
 - `.env`（权限 600）只有 `SUPABASE_JWT_SECRET` 一项，在服务器上从 `/opt/honghong-supabase/.env` 的 `JWT_SECRET` 生成；未配置任何 LLM Key，`/healthz` 返回 `llm_configured:false`。**密钥不入库**
