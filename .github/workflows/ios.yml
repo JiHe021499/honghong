@@ -2,8 +2,12 @@ name: iOS（未签名）
 
 # 还没有 Apple 开发者账号：只做不签名的编译检查，确认 App 和小组件扩展都能编过，
 # 产物是未签名的 Runner.app（含 PlugIns/HonghongWidgets.appex），不能直接装到手机上。
+# 不发布（没有 TestFlight/App Store 步骤）：push / PR 到 master 时做构建检查，也可以手动触发。
 on:
   push:
+    branches: [master]
+    paths: ['app/**', '.github/workflows/ios.yml']
+  pull_request:
     branches: [master]
     paths: ['app/**', '.github/workflows/ios.yml']
   workflow_dispatch:
