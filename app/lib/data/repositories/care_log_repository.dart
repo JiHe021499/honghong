@@ -15,7 +15,7 @@ class CareLogRepository {
 
   /// 直接写一条完整记录（导入、测试或补录用）
   Future<String> add(String babyId, CareLogType type,
-      {DateTime? at, DateTime? endedAt, String? detail}) async {
+      {DateTime? at, DateTime? endedAt, String? detail, String source = 'quick'}) async {
     final id = const Uuid().v4();
     final start = at ?? DateTime.now();
     await _db.into(_db.careLogs).insert(CareLogsCompanion.insert(
@@ -26,6 +26,7 @@ class CareLogRepository {
           endedAt: Value(endedAt ?? start),
           detail: Value(detail),
           updatedAt: Value(DateTime.now()),
+          source: Value(source),
         ));
     return id;
   }
@@ -85,7 +86,7 @@ class CareLogRepository {
       {required DateTime start, DateTime? end, CareDetail? detail}) {
     final err = validateTimes(type, start, end);
     if (err != null) throw ArgumentError(err);
-    return add(babyId, type, at: start, endedAt: type.isTimed ? end : start, detail: detail?.encode());
+    return add(babyId, type, at: start, endedAt: type.isTimed ? end : start, detail: detail?.encode(), source: 'backfill');
   }
 
   /// 修改已结束记录的开始/结束时间和细节

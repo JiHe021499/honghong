@@ -71,6 +71,7 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   drift_dev: ^2.35.1
   build_runner: ^2.16.2
+  sqlite3: ^3.5.2 # 迁移测试里直接造 v4 老库
   flutter_launcher_icons: ^0.14.4
 
 flutter:

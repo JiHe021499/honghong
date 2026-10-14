@@ -27,4 +27,11 @@ class BabyRepository {
   Future<void> updateNickname(String id, String name) =>
       (_db.update(_db.babies)..where((b) => b.id.equals(id)))
           .write(BabiesCompanion(nickname: Value(name), updatedAt: Value(DateTime.now()), dirty: const Value(true)));
+
+  /// 性别：'boy' | 'girl' | null（跳过/清除）。会随家庭同步推送（D5，不发给 AI）。
+  Future<void> updateGender(String id, String? gender) {
+    if (gender != null && gender != 'boy' && gender != 'girl') throw ArgumentError.value(gender, 'gender');
+    return (_db.update(_db.babies)..where((b) => b.id.equals(id)))
+        .write(BabiesCompanion(gender: Value(gender), updatedAt: Value(DateTime.now()), dirty: const Value(true)));
+  }
 }

@@ -90,6 +90,7 @@ class FamilySync {
             nickname: remote['nickname'] as String,
             birthDate: DateTime.parse(remote['birth_date'] as String),
             updatedAt: Value(_parse(remote['updated_at'])),
+            gender: Value(remote['gender'] as String?),
           ));
       for (final b in locals) {
         await (_db.update(_db.careLogs)..where((l) => l.babyId.equals(b.id))).write(CareLogsCompanion(babyId: Value(id)));
@@ -121,6 +122,7 @@ class FamilySync {
       'id': b.id,
       'nickname': b.nickname,
       'birth_date': b.birthDate.toIso8601String().substring(0, 10),
+      'gender': b.gender,
       'updated_at': _ts(at),
     });
     await (_db.update(_db.babies)..where((x) => x.id.equals(b.id) & x.updatedAt.equalsNullable(b.updatedAt)))
@@ -301,6 +303,8 @@ class FamilySync {
       await (_db.update(_db.babies)..where((b) => b.id.equals(local.id))).write(BabiesCompanion(
           nickname: Value(r['nickname'] as String),
           birthDate: Value(DateTime.parse(r['birth_date'] as String)),
+          // 服务端还没跑 0004（没有 gender 列）时保留本地值
+          gender: r.containsKey('gender') ? Value(r['gender'] as String?) : const Value.absent(),
           updatedAt: Value(remoteAt)));
     }
   }
