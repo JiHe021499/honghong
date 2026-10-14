@@ -7,7 +7,7 @@
 | `GET /healthz` | ✅ 返回 `{ ok, llm_configured }` |
 | `POST /diary-parse` | ✅ P2：DeepSeek json_object + 提示词内 schema，强制校验、不合规重试一次；清洗（未知键丢弃、越界置空降置信度、诊断词回退原文）、原文覆盖补卡、风险词；限流 60 次/天/用户 |
 | `POST /diary-summary` | ✅ P2：只收聚合统计；≤50 字、无诊断词、不出现统计外数字，不合规重试一次后模板兜底；`idempotency_key` 24h 幂等（重放不占限流）；限流 3 次/天/用户 |
-| `POST /diary-asr` | 本期不做（D9） |
+| `GET /diary-asr`（WebSocket） | ✅ 讯飞「语音听写（流式版）」中转，本机识别不可用时的兜底（D9 修订）。客户端发 16k PCM 二进制帧 + `{"type":"end"}`，收 partial/final/error；音频只在内存转发；60 次/天/人，单次 ≤60s；未配置 `XFYUN_*` 返回 503 |
 
 服务端不落库用户文本，只打匿名指标日志（路由、状态码、耗时）。
 
@@ -36,6 +36,14 @@ location /ai/ {
 ```
 改前先备份，`nginx -t` 通过后 `nginx -s reload`。线上细节见 `backend/README.md`。
 App 侧地址即 `https://honghong.hczhw.com/ai/diary-parse`。
+
+## 讯飞联网识别
+环境变量：`XFYUN_APPID`、`XFYUN_API_KEY`、`XFYUN_API_SECRET`（只放服务器 `.env`，不进仓库）。可选 `LIMIT_ASR_PER_DAY`（默认 60）。
+反向代理需转发 WebSocket Upgrade 头，见架构文档 §4.4。本机联调：
+```bash
+SUPABASE_JWT_SECRET=$S XFYUN_APPID=... XFYUN_API_KEY=... XFYUN_API_SECRET=... npm start
+ASR_SMOKE_JWT_SECRET=$S node eval/asr_smoke.js /tmp/a.pcm   # 16k/16bit/单声道 PCM
+```
 
 ## 评测
 供应商：DeepSeek `deepseek-chat`（用户已选，json_object 降级方案）。Key 只放环境变量 `DEEPSEEK_API_KEY` / 服务器 `.env`。

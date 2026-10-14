@@ -29,7 +29,10 @@ class FakeVoice implements VoiceCapture {
   bool ok;
   int cancels = 0;
   @override
+  bool failed = false;
+  @override
   Future<bool> start({required void Function(String partial) onPartial, void Function(double level)? onLevel}) async {
+    failed = !ok;
     if (ok) onPartial('刚才喂了');
     return ok;
   }

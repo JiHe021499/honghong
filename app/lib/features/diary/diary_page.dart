@@ -19,6 +19,7 @@ import 'diary_flow.dart';
 import 'diary_providers.dart';
 import 'diary_sheets.dart';
 import 'diary_widgets.dart';
+import '../../services/diary/voice_capture.dart';
 
 enum MicState { idle, recording, cancelZone, processing }
 
@@ -38,6 +39,12 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
   Offset? _down;
   bool _starting = false;
 
+  /// 本机识别这次打开里已经失败/不可用过：之后（已同意时）直接走联网识别
+  bool _systemBroken = false;
+
+  /// 当前这次按住用的是哪个识别
+  VoiceCapture? _capture;
+
   /// 上滑超过这个距离进入“松手取消”
   static const cancelDy = 80.0;
 
@@ -50,7 +57,7 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
   @override
   void dispose() {
     _tick?.cancel();
-    if (mic == MicState.recording || mic == MicState.cancelZone) ref.read(voiceCaptureProvider).cancel();
+    if (mic == MicState.recording || mic == MicState.cancelZone) (_capture ?? ref.read(voiceCaptureProvider))!.cancel();
     super.dispose();
   }
 
@@ -84,13 +91,17 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
     _tick = Timer.periodic(const Duration(milliseconds: 200), (_) {
       if (mounted && _startedAt != null) setState(() => elapsed = _now().difference(_startedAt!));
     });
-    final ok = await ref.read(voiceCaptureProvider).start(onPartial: (t) {
+    final cloud = ref.read(cloudVoiceCaptureProvider);
+    final useCloud = _systemBroken && cloud != null && _consent == true;
+    final VoiceCapture cap = useCloud ? cloud : ref.read(voiceCaptureProvider);
+    _capture = cap;
+    final ok = await cap.start(onPartial: (t) {
       if (mounted) setState(() => live = t);
     });
     _starting = false;
     if (!ok && mounted) {
       _reset();
-      await _voiceFailed();
+      await _recognizerFailed(cap);
     }
   }
 
@@ -102,7 +113,7 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
   }
 
   Future<void> _release() async {
-    final voice = ref.read(voiceCaptureProvider);
+    final VoiceCapture voice = _capture ?? ref.read(voiceCaptureProvider);
     final started = _startedAt;
     if (mic == MicState.cancelZone) {
       await voice.cancel();
@@ -123,7 +134,7 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
     if (!mounted) return;
     if (text.isEmpty) {
       _reset();
-      return _voiceFailed();
+      return voice.failed ? _recognizerFailed(voice) : _voiceFailed();
     }
     setState(() => live = text);
     await _process(text, 'voice');
@@ -134,6 +145,36 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
     _down = null;
     _startedAt = null;
     if (mounted) setState(() => mic = MicState.idle);
+  }
+
+  bool? get _consent => ref.read(prefsProvider).getBool(kDiaryCloudAsrConsent);
+
+  /// 识别引擎不可用/出错：本机的 → 联网识别兜底（首次先告知）；联网的 → 屏 9。
+  Future<void> _recognizerFailed(VoiceCapture cap) async {
+    final cloud = ref.read(cloudVoiceCaptureProvider);
+    if (identical(cap, cloud) || cloud == null) return _voiceFailed();
+    final firstSwitch = !_systemBroken;
+    _systemBroken = true;
+    switch (_consent) {
+      case null:
+        final ok = await showCloudAsrConsentSheet(context);
+        if (!mounted) return;
+        if (ok == true) {
+          await ref.read(prefsProvider).setBool(kDiaryCloudAsrConsent, true);
+          _snack('已换成联网识别，请再按住说一次');
+        } else {
+          if (ok == false) await ref.read(prefsProvider).setBool(kDiaryCloudAsrConsent, false);
+          await _openText();
+        }
+      case true:
+        if (firstSwitch) {
+          _snack('本机识别不可用，已换成联网识别，请再说一次');
+        } else {
+          await _voiceFailed();
+        }
+      case false:
+        await _voiceFailed();
+    }
   }
 
   Future<void> _voiceFailed() async {
