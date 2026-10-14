@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../core/prefs.dart';
 import '../../core/providers.dart';
@@ -16,6 +15,7 @@ import '../../domain/models/care_detail.dart';
 import '../../domain/models/care_log_type.dart';
 import '../../services/audio/auto_listen.dart';
 import '../care/care_actions.dart';
+import '../care/care_log_row.dart';
 
 /// 首页（设计稿 01/02/04/06/08/10，夜间 14）
 class HomePage extends ConsumerStatefulWidget {
@@ -504,8 +504,6 @@ class _Timeline extends ConsumerWidget {
             : justSavedId != null
                 ? '已写入 · 可点条目修改'
                 : '喂奶 / 睡觉 / 拍嗝：开始后计时';
-    final hm = DateFormat('HH:mm');
-
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Padding(
         padding: const EdgeInsets.only(top: 6, bottom: 10),
@@ -525,12 +523,10 @@ class _Timeline extends ConsumerWidget {
               )
             : Column(children: [
                 for (var i = 0; i < rows.length; i++)
-                  _TimelineRow(
+                  CareLogRow(
                     log: rows[i],
                     last: i == rows.length - 1,
-                    live: rows[i].endedAt == null,
                     fresh: rows[i].id == justDiaperId,
-                    time: rows[i].endedAt == null ? '${hm.format(rows[i].startedAt)} 开始' : hm.format(rows[i].startedAt),
                     onTap: () => onTap(rows[i]),
                   ),
               ]),
@@ -543,67 +539,6 @@ class _Timeline extends ConsumerWidget {
       ),
     ]);
   }
-}
-
-class _TimelineRow extends ConsumerWidget {
-  const _TimelineRow({required this.log, required this.last, required this.live, required this.fresh, required this.time, required this.onTap});
-  final CareLog log;
-  final bool last, live, fresh;
-  final String time;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final c = context.hh;
-    final t = CareLogType.values.byName(log.type);
-    if (live) ref.watch(secondTickerProvider);
-    final highlight = live || fresh;
-    final badge = live
-        ? _Badge('计时 ${formatTimer(DateTime.now().difference(log.startedAt))}', c.peachL, c.peach2)
-        : fresh
-            ? _Badge('刚刚', const Color(0xFFD4EDDC), c.greenInk)
-            : null;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: !highlight ? null : (fresh ? c.greenL : c.liveRow),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 11),
-        decoration: BoxDecoration(
-          border: highlight || last ? null : Border(bottom: BorderSide(color: c.line)),
-        ),
-        child: Row(children: [
-          IconTile(t.icon, bg: typeTint(c, log.type)),
-          const SizedBox(width: 12),
-          Flexible(
-            child: Text(live ? t.runningLabel : describeLog(t, log.startedAt, log.endedAt, log.detail),
-                style: TextStyle(fontSize: 14, color: c.ink), overflow: TextOverflow.ellipsis),
-          ),
-          if (badge != null) ...[const SizedBox(width: 6), badge],
-          const Spacer(),
-          Text(time, style: TextStyle(fontSize: 12, color: c.sub)),
-        ]),
-      ),
-      ),
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  const _Badge(this.text, this.bg, this.fg);
-  final String text;
-  final Color bg, fg;
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
-        child: Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: fg)),
-      );
 }
 
 class _DiaperToast extends StatelessWidget {

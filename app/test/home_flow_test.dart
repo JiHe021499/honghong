@@ -46,7 +46,8 @@ void main() {
     await tester.tap(find.text('保存记录'));
     await settle(tester, 10);
     expect(find.byKey(const Key('running-feed')), findsNothing);
-    expect(find.textContaining('母乳 · 右侧 1 分钟'), findsOneWidget);
+    expect(find.text('喂奶 · 母乳'), findsOneWidget);
+    expect(find.textContaining('右侧 · 1分钟'), findsOneWidget);
     expect(find.text('已写入 · 可点条目修改'), findsOneWidget);
 
     final logs = await tester.runAsync(() => CareLogRepository(db).all());
@@ -66,7 +67,7 @@ void main() {
     await settle(tester);
     expect(find.text('已记下换尿布'), findsOneWidget);
     expect(find.text('已记'), findsOneWidget);
-    expect(find.text('换尿布 · 未分类'), findsOneWidget);
+    expect(find.text('未分类'), findsOneWidget);
     expect(find.text('刚刚'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('diaper-toast')));
@@ -75,7 +76,8 @@ void main() {
     await tester.tap(find.text('大便'));
     await tester.tap(find.text('更新'));
     await settle(tester, 10);
-    expect(find.text('换尿布 · 大便'), findsOneWidget);
+    expect(find.text('大便'), findsWidgets);
+    expect(find.text('未分类'), findsNothing);
     await tester.pump(const Duration(seconds: 5)); // toast 定时器走完
     await unmount(tester);
     await tester.runAsync(db.close);

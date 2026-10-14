@@ -9,6 +9,7 @@ import 'package:honghong/data/repositories/baby_repository.dart';
 import 'package:honghong/data/repositories/care_log_repository.dart';
 import 'package:honghong/domain/models/care_detail.dart';
 import 'package:honghong/domain/models/care_log_type.dart';
+import 'package:honghong/features/care/care_log_row.dart';
 import 'package:honghong/features/logs/log_detail_page.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -143,7 +144,7 @@ void main() {
       await tester.tap(find.text('取消'));
       await settle(tester, 10);
 
-      await tester.tap(find.byType(ListTile).first);
+      await tester.tap(find.byType(CareLogRow).first);
       await settle(tester, 10);
       expect(find.text('修改喂奶记录'), findsOneWidget);
       await tester.ensureVisible(find.byKey(const Key('record-delete')));

@@ -6,11 +6,10 @@ import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/hh_widgets.dart';
 import '../../data/db/app_database.dart';
-import '../../domain/models/care_detail.dart';
-import '../../domain/models/care_log_type.dart';
 import '../care/care_actions.dart';
 import '../cry/recording_page.dart';
 import 'record_editor_sheet.dart';
+import '../care/care_log_row.dart';
 
 /// 全部记录：按天分组，右上角「补记」，点条目修改时间/细节或删除，左滑删除
 class LogDetailPage extends ConsumerWidget {
@@ -22,7 +21,6 @@ class LogDetailPage extends ConsumerWidget {
     final logs = ref.watch(recentLogsProvider);
     final actions = CareActions(ref);
     final day = DateFormat('M月d日 EEEE', 'zh_CN');
-    final hm = DateFormat('HH:mm');
     return Scaffold(
       body: SafeArea(
         child: Column(children: [
@@ -84,21 +82,10 @@ class LogDetailPage extends ConsumerWidget {
                                 color: const Color(0xFFFFD9CC),
                                 child: Text('删除', style: TextStyle(color: c.peachDeep, fontWeight: FontWeight.w700)),
                               ),
-                              child: ListTile(
+                              child: CareLogRow(
+                                log: l,
+                                last: l == g.value.last,
                                 onTap: () => l.endedAt == null ? actions.end(context, l) : openRecordEditor(context, ref, log: l),
-                                leading: IconTile(CareLogType.values.byName(l.type).icon, bg: typeTint(c, l.type)),
-                                title: Text(
-                                  l.endedAt == null
-                                      ? CareLogType.values.byName(l.type).runningLabel
-                                      : describeLog(CareLogType.values.byName(l.type), l.startedAt, l.endedAt, l.detail),
-                                  style: TextStyle(fontSize: 14, color: c.ink),
-                                ),
-                                trailing: Text(
-                                  l.endedAt == null || l.endedAt == l.startedAt
-                                      ? hm.format(l.startedAt)
-                                      : '${hm.format(l.startedAt)}–${hm.format(l.endedAt!)}',
-                                  style: TextStyle(fontSize: 12, color: c.sub),
-                                ),
                               ),
                             ),
                         ]),

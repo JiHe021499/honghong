@@ -84,6 +84,42 @@ String formatDuration(Duration d) {
   return m == 0 ? '$h 小时' : '$h 小时 $m 分';
 }
 
+/// 紧凑时长："1小时20分"、"25分钟"、"45秒"（列表第二行用）
+String formatDurationCompact(Duration d) {
+  if (d.isNegative) d = Duration.zero;
+  if (d.inMinutes < 1) return '${d.inSeconds}秒';
+  final h = d.inHours, m = d.inMinutes % 60;
+  if (h == 0) return '$m分钟';
+  return m == 0 ? '$h小时' : '$h小时$m分';
+}
+
+/// 记录列表的两行文案：第一行"类型 · 关键细节"，第二行次要信息
+({String title, String subtitle}) logLines(CareLogType type, DateTime start, DateTime? end, String? detailJson) {
+  final d = CareDetail.decode(detailJson);
+  final dur = end == null ? null : formatDurationCompact(end.difference(start));
+  switch (type) {
+    case CareLogType.feed:
+      final method = d.method ?? FeedMethod.breast;
+      return (
+        title: '喂奶 · ${method.label}',
+        subtitle: [
+          if (d.side != null && method == FeedMethod.breast) d.side!.label,
+          ?dur,
+          if (d.ml != null) '${d.ml}ml',
+        ].join(' · '),
+      );
+    case CareLogType.sleep:
+      // 预设的短备注放第一行；自定义的长备注放第二行，避免标题被截断
+      final preset = d.note != null && (CareDetail.sleepNotes.contains(d.note) || d.note!.runes.length <= 4);
+      final name = preset ? d.note! : (start.hour >= 19 || start.hour < 6 ? '夜睡' : (start.hour >= 11 && start.hour < 15 ? '午睡' : '小睡'));
+      return (title: '睡觉 · $name', subtitle: [?dur, if (!preset) ?d.note].join(' · '));
+    case CareLogType.burp:
+      return (title: '拍嗝', subtitle: [?dur, ?d.note].join(' · '));
+    case CareLogType.diaper:
+      return (title: '换尿布', subtitle: (d.diaper ?? DiaperKind.unknown).label);
+  }
+}
+
 /// 计时器显示："3:20"、"1:05:09"
 String formatTimer(Duration d) {
   if (d.isNegative) d = Duration.zero;
