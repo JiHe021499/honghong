@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:honghong/core/app_clock.dart';
 import 'package:honghong/data/db/app_database.dart';
 import 'package:honghong/data/repositories/baby_repository.dart';
 import 'package:honghong/data/repositories/care_log_repository.dart';
@@ -15,12 +16,18 @@ void main() {
   DateTime at(int h, [int m = 0]) => DateTime(2026, 10, 14, h, m);
 
   setUp(() async {
+    // 用例里的记录都在 2026-10-14 当天：把“现在”固定在当天深夜，
+    // 否则补记校验（开始时间不能晚于现在）会随运行的日期、时刻和时区变化。
+    AppClock.source = () => DateTime(2026, 10, 14, 23, 30);
     db = AppDatabase.memory();
     diary = DiaryRepository(db);
     logs = CareLogRepository(db);
     babyId = (await BabyRepository(db).ensureDefault()).id;
   });
-  tearDown(() => db.close());
+  tearDown(() async {
+    AppClock.source = DateTime.now;
+    await db.close();
+  });
 
   DiaryInputsCompanion input([String text = '今天吃奶6次，下午哭得厉害，十点拉了一次']) => DiaryInputsCompanion.insert(
       id: 'in1', babyId: babyId, inputType: 'voice', rawText: text, ageInDays: 102, parseStatus: 'ok', promptVersion: 'parse-v1');

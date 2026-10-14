@@ -1,3 +1,4 @@
+import 'package:honghong/core/app_clock.dart';
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter/material.dart' hide Column;
 import 'package:flutter_test/flutter_test.dart';
@@ -12,7 +13,8 @@ import 'diary_flow_test.dart' show FakeApi, FakeVoice, Clock;
 import 'helpers.dart';
 
 void main() {
-  final now = DateTime.now();
+  // 固定“现在”：真实时钟在接近午夜时会把种子记录挤到同一分钟，结果随运行时刻和时区变化
+  final now = DateTime(2026, 10, 14, 18, 30);
   final today = DateTime(now.year, now.month, now.day);
   // 保证在“现在之前”且在今天
   DateTime ago(int min) {
@@ -41,6 +43,8 @@ void main() {
   group('不重复计数', () {
     late AppDatabase db;
     setUp(() async {
+      AppClock.source = () => now;
+      addTearDown(() => AppClock.source = DateTime.now);
       db = AppDatabase.memory();
       await seed(db);
     });
@@ -68,6 +72,7 @@ void main() {
   group('时间线界面', () {
     late Clock clock;
     Future<AppDatabase> open(WidgetTester tester) async {
+      fixClock(tester, now);
       tester.view.physicalSize = const Size(1170, 2532);
       tester.view.devicePixelRatio = 3;
       addTearDown(tester.view.reset);
