@@ -165,6 +165,7 @@ void main() {
       tester.view.physicalSize = const Size(1170, 2532);
       tester.view.devicePixelRatio = 3;
       addTearDown(tester.view.reset);
+      fixClock(tester, at(21, 3)); // 时间线的“今天”等也跟着固定，不随真实时钟/时区变
       clock = Clock()..t = at(21, 3);
       api = FakeApi(error: err);
       return pumpApp(tester, seed: (db) async {
