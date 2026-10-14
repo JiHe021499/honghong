@@ -262,8 +262,8 @@ curl -s -o /dev/null -w '%{http_code}\n' $H$A.sha256                      # 404
 curl -s $H$A | sha256sum                                                  # 与 version.json 的 sha256 一致
 curl -sI $H/download/ | grep -iE 'cf-cache-status|cache-control'          # DYNAMIC、no-cache（HTML 不被 CDN 缓存）
 curl -sI "$H/download/data/version.json?x=$RANDOM" | grep -iE 'cf-cache-status|cache-control'   # DYNAMIC、max-age=60
-curl -s $H/download/beta/ | grep -oE 'assets/app\.js\?v=[0-9a-f]+'           # 带上本次提交号
-curl -s "$H$(curl -s $H/download/beta/ | grep -oE '/?assets/app\.js\?v=[0-9a-f]+' | sed 's#^/\?#/download/beta/../#')" | grep -c localApkUrl   # ≥1：拿到的是新 app.js
+V=$(curl -s $H/download/beta/ | grep -oE 'app\.js\?v=[0-9a-f]+' | head -1); echo $V    # 带上本次提交号
+curl -s "$H/download/assets/$V" | grep -c localApkUrl                     # ≥1：拿到的是新 app.js
 for u in /download /download/ /download/beta/ /ai/healthz /rest/v1/ /; do curl -s -o /dev/null -w "$u %{http_code}\n" $H$u; done   # 301 200 200 200 401 404
 ```
 
