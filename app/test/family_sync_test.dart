@@ -129,6 +129,25 @@ void main() {
     expect(bb.gender, 'girl');
   });
 
+  test('云端已有性别后可以改成另一个性别，家人收到新值', () async {
+    final baby = await BabyRepository(dbA).ensureDefault();
+    await a.create(name: '爸爸', avatar: 'dad');
+    await b.join(code: server.invites.keys.single, name: '妈妈', avatar: 'mom');
+    Future<void> setGender(String g, int sec) async {
+      await BabyRepository(dbA).updateGender(baby.id, g);
+      await (dbA.update(dbA.babies)..where((x) => x.id.equals(baby.id)))
+          .write(BabiesCompanion(updatedAt: Value(DateTime.now().add(Duration(seconds: sec)))));
+      await a.sync();
+      await b.sync();
+    }
+
+    await setGender('girl', 2);
+    expect((await dbB.select(dbB.babies).getSingle()).gender, 'girl');
+    await setGender('boy', 4);
+    expect(server.babies.values.single['gender'], 'boy');
+    expect((await dbB.select(dbB.babies).getSingle()).gender, 'boy');
+  });
+
   test('日记来源的护理记录同步给家人（D3），source 不上云，家人那边记为默认 quick', () async {
     await BabyRepository(dbA).ensureDefault();
     await a.create(name: '爸爸', avatar: 'dad');

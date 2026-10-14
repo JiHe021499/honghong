@@ -26,6 +26,11 @@ exception when check_violation then null; end $$;
 -- 旧时间戳不覆盖
 select public.push_baby('bbbbbbbb-0000-0000-0000-000000000011', '旧', '2026-07-01', '2026-10-14T09:00:00Z', 'boy');
 do $$ begin assert (select gender from public.shared_babies) = 'girl', '旧数据不应覆盖'; end $$;
+-- 已设性别可改成另一个性别（产品决定：不能清回未填，但必须能改）
+select public.push_baby('bbbbbbbb-0000-0000-0000-000000000011', '糖糖', '2026-07-01', '2026-10-14T13:00:00Z', 'boy');
+do $$ begin assert (select gender from public.shared_babies) = 'boy', '应能从 girl 改成 boy'; end $$;
+select public.push_baby('bbbbbbbb-0000-0000-0000-000000000011', '糖糖', '2026-07-01', '2026-10-14T14:00:00Z', 'girl');
+do $$ begin assert (select gender from public.shared_babies) = 'girl', '应能再改回 girl'; end $$;
 select public.leave_family();
 reset role;
 select 'ALL DIARY SQL CHECKS PASSED' as result;
