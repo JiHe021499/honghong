@@ -144,7 +144,7 @@ void main() {
       final a = FakeAdapter({src: 503, 'https://ghfast.top/$src': jsonEncode(versionJson())});
       final r = await svc(a).check(manual: true);
       expect(r!.info.versionCode, 42);
-      expect(a.hits.last, startsWith('https://ghfast.top/'));
+      expect(a.hits.where((h) => !h.contains('hczhw')).last, startsWith('https://ghfast.top/'));
     });
 
     test('全都失败抛异常，且不记检查时间', () async {
@@ -201,50 +201,94 @@ void main() {
     });
   });
 
-  group('本站下载（localApkUrl）', () {
-    const site = UpdateService.siteSource;
+  group('本站下载（localApkUrl），哈希只认 GitHub', () {
+    const site = UpdateService.defaultSiteSource;
     const localPath = '/download/files/dev/honghong-0.1.42-42-aaaaaaaa.apk';
     const localUrl = 'https://honghong.hczhw.com$localPath';
-    Map<String, Object?> siteJson() => {...versionJson(), 'localApkUrl': localPath};
+    Map<String, Object?> siteJson({String? sha, int code = 42}) =>
+        {...versionJson(code: code, sha: sha), 'localApkUrl': localPath};
     late Directory dir;
     setUp(() async => dir = await Directory.systemTemp.createTemp('upd'));
     tearDown(() => dir.delete(recursive: true));
 
-    test('解析：相对路径按来源地址补全；没有字段时为 null（兼容 GitHub 原件）', () {
-      expect(ReleaseInfo.parse(siteJson(), source: Uri.parse(site)).localApkUrl, localUrl);
-      expect(ReleaseInfo.parse(versionJson(), source: Uri.parse(site)).localApkUrl, isNull);
-      expect(ReleaseInfo.parse(siteJson()).localApkUrl, isNull, reason: '不知道来源就不猜');
-    });
-    test('解析：非法或非 https 的 localApkUrl 忽略，不影响其它字段', () {
+    test('解析 localApkUrl：相对路径按来源补全；非法或非 https 忽略', () {
+      expect(ReleaseInfo.resolveLocal(localPath, Uri.parse(site)), localUrl);
+      expect(ReleaseInfo.resolveLocal(localPath, null), isNull);
       for (final bad in [123, '', 'http://honghong.hczhw.com/x.apk', 'ftp://a/b.apk', '/download/files/x.txt']) {
-        final i = ReleaseInfo.parse({...versionJson(), 'localApkUrl': bad}, source: Uri.parse(site));
-        expect(i.localApkUrl, isNull, reason: '$bad');
-        expect(i.versionCode, 42);
+        expect(ReleaseInfo.resolveLocal(bad, Uri.parse(site)), isNull, reason: '$bad');
       }
-      expect(ReleaseInfo.parse({...versionJson(), 'localApkUrl': 'https://cdn.example.com/a.apk'}).localApkUrl,
-          'https://cdn.example.com/a.apk');
     });
-    test('检查更新先读本站副本，带上 localApkUrl', () async {
-      final a = FakeAdapter({site: jsonEncode(siteJson()), src: jsonEncode(versionJson())});
+
+    test('版本信息和 sha256 来自 GitHub，本站只提供下载地址', () async {
+      final evil = 'e' * 64;
+      final a = FakeAdapter({src: jsonEncode(versionJson()), site: jsonEncode(siteJson(sha: evil))});
       final r = await svc(a).check(manual: true);
-      expect(r!.info.localApkUrl, localUrl);
-      expect(a.hits.single, startsWith(site));
+      expect(r!.info.sha256, apkSha, reason: '本站副本的 sha256 被改了也不用');
+      expect(r.info.localApkUrl, localUrl);
+      expect(a.hits.first, startsWith(src), reason: '先读 GitHub');
     });
-    test('本站副本拿不到时读 GitHub：没有 localApkUrl，本站地址不走 GitHub 镜像', () async {
-      final a = FakeAdapter({site: 502, src: jsonEncode(versionJson())});
+
+    test('GitHub 原件里出现 localApkUrl 也不用', () async {
+      final a = FakeAdapter({src: jsonEncode(siteJson()), site: 404});
+      expect((await svc(a).check(manual: true))!.info.localApkUrl, isNull);
+    });
+
+    test('本站副本版本对不上（还没同步到）就不用本站地址', () async {
+      final a = FakeAdapter({src: jsonEncode(versionJson(code: 43)), site: jsonEncode(siteJson(code: 42))});
       final r = await svc(a).check(manual: true);
-      expect(r!.info.localApkUrl, isNull);
-      expect(a.hits.where((h) => h.contains('ghfast') && h.contains('hczhw')), isEmpty);
+      expect(r!.info.versionCode, 43);
+      expect(r.info.localApkUrl, isNull);
     });
-    test('下载优先本站，校验 sha256', () async {
-      final a = FakeAdapter({localUrl: apkBytes, apkUrl: [9, 9, 9]});
-      final info = ReleaseInfo.parse(siteJson(), source: Uri.parse(site));
-      final f = await svc(a).download(info, dir);
+
+    test('本站没有 localApkUrl 或读不到：照常更新，从 GitHub 下载（兼容线上现状）', () async {
+      for (final siteResp in <Object>[jsonEncode(versionJson()), 502, 'not json']) {
+        final a = FakeAdapter({src: jsonEncode(versionJson()), site: siteResp});
+        final r = await svc(a).check(manual: true);
+        expect(r!.info.localApkUrl, isNull, reason: '$siteResp');
+        expect(svc(a).apkCandidates(r.info), svc(a).candidates(apkUrl));
+      }
+    });
+
+    test('GitHub 全部不可达：报错让用户稍后重试，不退回本站，记一次埋点', () async {
+      final a = FakeAdapter({site: jsonEncode(siteJson())});
+      final s = svc(a);
+      await expectLater(
+        s.check(manual: true),
+        throwsA(isA<GithubUnreachableException>().having((e) => e.toString(), 'msg', contains('稍后重试'))),
+      );
+      expect(a.hits.where((h) => h.startsWith(site)), isEmpty, reason: 'GitHub 失败后不去读本站');
+      expect(s.metrics['2026-10-13'], {'github_unreachable_check': 1});
+      expect(s.due, isTrue, reason: '失败不记检查时间');
+      await expectLater(s.check(manual: true), throwsA(isA<GithubUnreachableException>()));
+      expect(s.metrics['2026-10-13'], {'github_unreachable_check': 2});
+    });
+
+    test('下载优先本站，用 GitHub 的 sha256 校验', () async {
+      final a = FakeAdapter({src: jsonEncode(versionJson()), site: jsonEncode(siteJson()), localUrl: apkBytes});
+      final s = svc(a);
+      final r = await s.check(manual: true);
+      a.hits.clear();
+      final f = await s.download(r!.info, dir);
       expect(await UpdateService.verify(f, apkSha), isTrue);
       expect(a.hits, [localUrl]);
     });
-    test('本站失败（出错或哈希不对）回退 GitHub', () async {
-      final info = ReleaseInfo.parse(siteJson(), source: Uri.parse(site));
+
+    test('本站的包和本站哈希一致、但和 GitHub 哈希不一致：拒绝，改从 GitHub 下', () async {
+      final evilBytes = [6, 6, 6];
+      final evilSha = sha256.convert(evilBytes).toString();
+      final a = FakeAdapter({
+        src: jsonEncode(versionJson()),
+        site: jsonEncode(siteJson(sha: evilSha)),
+        localUrl: evilBytes,
+        apkUrl: apkBytes,
+      });
+      final s = svc(a);
+      final f = await s.download((await s.check(manual: true))!.info, dir);
+      expect(await f.readAsBytes(), apkBytes);
+    });
+
+    test('本站失败（出错或坏包）回退 GitHub', () async {
+      final info = ReleaseInfo.parse(versionJson()).withLocalApkUrl(localUrl);
       for (final local in <Object>[404, [1, 2, 3]]) {
         final d = await dir.createTemp();
         final a = FakeAdapter({localUrl: local, apkUrl: apkBytes});
@@ -253,18 +297,33 @@ void main() {
         expect(a.hits, [localUrl, apkUrl]);
       }
     });
-    test('本站和 GitHub 都给了坏包：报校验失败，不留文件', () async {
-      final info = ReleaseInfo.parse(siteJson(), source: Uri.parse(site));
-      final a = FakeAdapter({localUrl: [1], apkUrl: [2], 'https://ghfast.top/': [3], 'https://gh-proxy.com/': [4]});
-      await expectLater(svc(a).download(info, dir), throwsA(isA<ShaMismatchException>()));
-      expect(dir.listSync(), isEmpty);
-      expect(a.hits.first, localUrl);
-      expect(a.hits.length, 4);
-    });
-    test('没有 localApkUrl 时下载顺序和原来一样', () {
+
+    test('本站和 GitHub 都下不到：提示稍后重试，记下载阶段埋点', () async {
       final s = svc(FakeAdapter({}));
-      expect(s.apkCandidates(ReleaseInfo.parse(versionJson())), s.candidates(apkUrl));
-      expect(s.candidates(localUrl), [localUrl]);
+      await expectLater(
+        s.download(ReleaseInfo.parse(versionJson()).withLocalApkUrl(localUrl), dir),
+        throwsA(isA<GithubUnreachableException>()),
+      );
+      expect(s.metrics['2026-10-13'], {'github_unreachable_download': 1});
+      expect(dir.listSync(), isEmpty);
+    });
+
+    test('都给了坏包：报校验失败（不算不可达），不留文件', () async {
+      final info = ReleaseInfo.parse(versionJson()).withLocalApkUrl(localUrl);
+      final a = FakeAdapter({localUrl: [1], apkUrl: [2], 'https://ghfast.top/': [3], 'https://gh-proxy.com/': [4]});
+      final s = svc(a);
+      await expectLater(s.download(info, dir), throwsA(isA<ShaMismatchException>()));
+      expect(dir.listSync(), isEmpty);
+      expect(a.hits.length, 4);
+      expect(s.metrics, isEmpty);
+    });
+
+    test('埋点只保留 30 天', () async {
+      final s = svc(FakeAdapter({}));
+      await s.recordGithubUnreachable('check', null);
+      now = now.add(const Duration(days: 31));
+      await s.recordGithubUnreachable('download', null);
+      expect(s.metrics.keys, ['2026-11-13']);
     });
   });
 }
