@@ -1,3 +1,5 @@
+import 'package:honghong/services/diary/diary_metrics.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:honghong/core/app_clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -132,6 +134,9 @@ void main() {
     expect(await tester.runAsync(() => db.select(db.diaryCards).get()), hasLength(2));
     final logs = await tester.runAsync(() => db.select(db.careLogs).get());
     expect(logs!.map((l) => l.source).toSet(), {'diary'});
+    final m = DiaryMetrics(await SharedPreferences.getInstance()).totals();
+    expect([m[DiaryMetric.voice], m[DiaryMetric.voiceFail], m[DiaryMetric.save], m[DiaryMetric.saveOneTap], m[DiaryMetric.cards], m[DiaryMetric.cardsChanged]],
+        [1, 0, 1, 1, 2, 0]);
     await unmount(tester);
   });
 
@@ -164,6 +169,10 @@ void main() {
     await tester.tap(find.byKey(const Key('save')));
     await settle(tester, 10);
     expect(await tester.runAsync(() => db.select(db.diaryCards).get()), hasLength(1));
+    // 埋点：识别失败 1/1；取消勾选一张 → 不算一键保存
+    final m = DiaryMetrics(await SharedPreferences.getInstance()).totals();
+    expect([m[DiaryMetric.voice], m[DiaryMetric.voiceFail], m[DiaryMetric.save], m[DiaryMetric.saveOneTap], m[DiaryMetric.cards], m[DiaryMetric.cardsChanged]],
+        [1, 1, 1, 0, 2, 1]);
     await unmount(tester);
   });
 

@@ -10,6 +10,7 @@ import '../../core/widgets/hh_widgets.dart';
 import '../../domain/diary/diary_card.dart';
 import '../../domain/diary/parse_result.dart';
 import 'diary_providers.dart';
+import '../../services/diary/diary_metrics.dart';
 import 'diary_widgets.dart';
 import '../../core/app_clock.dart';
 
@@ -38,6 +39,12 @@ class _ConfirmPageState extends ConsumerState<ConfirmPage> {
       final baby = await ref.read(currentBabyProvider.future);
       final age = r.createdAt.difference(baby.birthDate).inDays.clamp(0, 3 * 366);
       final n = await ref.read(diaryServiceProvider).save(babyId: baby.id, ageInDays: age, r: r);
+      final changed = r.cards.where((c) => c.edited || !c.selected).length;
+      final m = ref.read(diaryMetricsProvider);
+      await m.add(DiaryMetric.save);
+      if (changed == 0) await m.add(DiaryMetric.saveOneTap);
+      await m.add(DiaryMetric.cards, r.cards.length);
+      await m.add(DiaryMetric.cardsChanged, changed);
       if (mounted) context.pop(n);
     } catch (e) {
       if (!mounted) return;

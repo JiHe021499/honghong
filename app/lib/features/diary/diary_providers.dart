@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/env.dart';
 import '../../core/prefs.dart';
+import '../../services/diary/diary_metrics.dart';
 import '../../core/providers.dart';
 import '../../data/db/app_database.dart';
 import '../../data/repositories/diary_repository.dart';
@@ -76,6 +77,8 @@ const kDiaryDraft = 'diary_draft';
 
 /// 联网识别告知：null=还没问过，true=已同意，false=已拒绝（拒绝后不再自动弹，直接退回文字输入）
 const kDiaryCloudAsrConsent = 'diary_cloud_asr_consent';
+
+final diaryMetricsProvider = Provider((ref) => DiaryMetrics(ref.watch(prefsProvider)));
 
 /// 本次运行中本机语音识别已判定不可用（日记页置位，打字页据此提示可开启联网识别）
 final systemAsrBrokenProvider = NotifierProvider<SystemAsrBroken, bool>(SystemAsrBroken.new);

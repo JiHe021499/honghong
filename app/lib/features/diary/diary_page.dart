@@ -17,6 +17,7 @@ import 'diary_entry_row.dart';
 import 'diary_timeline_page.dart' show DiaryDayArgs, aggregateIdsProvider, timelineOrder;
 import 'diary_flow.dart';
 import 'diary_providers.dart';
+import '../../services/diary/diary_metrics.dart';
 import 'diary_sheets.dart';
 import 'diary_widgets.dart';
 import '../../services/diary/voice_capture.dart';
@@ -105,6 +106,8 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
     _starting = false;
     if (!ok && mounted) {
       _reset();
+      _metric(DiaryMetric.voice);
+      _metric(DiaryMetric.voiceFail);
       await _recognizerFailed(cap);
     }
   }
@@ -135,6 +138,8 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
     }
     setState(() => mic = MicState.processing);
     final text = await voice.stop();
+    _metric(DiaryMetric.voice);
+    if (text.isEmpty) _metric(DiaryMetric.voiceFail);
     if (!mounted) return;
     if (text.isEmpty) {
       _reset();
@@ -143,6 +148,8 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
     setState(() => live = text);
     await _process(text, 'voice');
   }
+
+  void _metric(DiaryMetric m) => ref.read(diaryMetricsProvider).add(m);
 
   void _reset() {
     _tick?.cancel();

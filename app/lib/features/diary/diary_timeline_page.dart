@@ -18,7 +18,8 @@ import 'diary_edit_sheet.dart';
 import 'diary_entry_row.dart';
 import '../../domain/diary/summary_service.dart';
 import 'diary_flow.dart' show diaryClockProvider;
-import 'diary_providers.dart' show summaryClockProvider, summaryRowProvider, summaryTriggerProvider;
+import 'diary_providers.dart' show summaryClockProvider, summaryRowProvider, summaryTriggerProvider, diaryMetricsProvider;
+import '../../services/diary/diary_metrics.dart';
 import 'diary_widgets.dart';
 
 /// 进入时间线时带的参数：刚保存了几条（屏 16 的提示条）
@@ -132,10 +133,14 @@ class _DiaryTimelinePageState extends ConsumerState<DiaryTimelinePage> {
     if (r == null || !mounted) return;
     if (r.delete) {
       final ok = await confirmDiaryDelete(context, what: _describe(row));
-      if (ok) await diary.deleteCard(row.id);
+      if (ok) {
+        await diary.deleteCard(row.id);
+        if (!row.editedByUser) await ref.read(diaryMetricsProvider).add(DiaryMetric.cardsChanged);
+      }
       return;
     }
     await diary.updateCard(row.id, r.patch!);
+    if (!row.editedByUser) await ref.read(diaryMetricsProvider).add(DiaryMetric.cardsChanged);
   }
 
   /// 确认框里的那一行：情绪 · 下午哭得厉害（有原话片段时用原话）

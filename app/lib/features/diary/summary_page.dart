@@ -12,6 +12,8 @@ import '../../core/widgets/hh_widgets.dart';
 import '../../data/db/app_database.dart';
 import '../../domain/diary/diary_card.dart';
 import 'diary_providers.dart';
+import 'diary_sheets.dart' show diaryDisclaimer;
+import '../../services/diary/diary_metrics.dart';
 import '../../domain/diary/summary_service.dart';
 import 'diary_widgets.dart';
 
@@ -48,6 +50,7 @@ class SummaryPage extends ConsumerWidget {
         HhButton(key: const Key('sum-add'), label: '补记一句', onPressed: () => context.push(Routes.diary)),
       ]);
     } else if (row?.status == 'ready') {
+      if (isToday) Future.microtask(() => ref.read(diaryMetricsProvider).add(DiaryMetric.summaryView));
       final stats = _stats(row!);
       final n = (jsonDecode(row.sourceIds) as List?)?.length ?? 0;
       body.addAll([
@@ -61,7 +64,7 @@ class SummaryPage extends ConsumerWidget {
         const SizedBox(height: 16),
         HhButton(key: const Key('sum-day'), label: isToday ? '看今天的日记' : '看这天的日记', primary: false, onPressed: goDay),
         const SizedBox(height: 12),
-        Text('妈咪日记仅用于记录宝宝日常情况，不提供医疗诊断或建议。如宝宝出现发热、持续哭闹、精神差等异常情况，请及时咨询专业医生。',
+        Text(diaryDisclaimer,
             textAlign: TextAlign.center, style: TextStyle(fontSize: 11, height: 1.6, color: sub)),
       ]);
     } else if (SummaryService.needsManualRetry(row)) {
