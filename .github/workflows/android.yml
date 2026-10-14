@@ -56,6 +56,18 @@ jobs:
               "$base".*) ;;
               *) echo "::error::标签 $GITHUB_REF_NAME 与 pubspec 的主.次版本 $base 不一致，终止发布。请先改 app/pubspec.yaml 的 version，或改用 v$base.x 标签"; exit 1 ;;
             esac
+            # 正式版的更新说明由人工写在标签说明里（git tag -a vX.Y.Z -F notes.md）。
+            # checkout 可能把带注释的标签取成轻量标签，这里重新取一次。
+            git fetch --force --no-tags origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
+            if [ "$(git cat-file -t "refs/tags/$GITHUB_REF_NAME")" != tag ]; then
+              echo "::error::$GITHUB_REF_NAME 不是带说明的标签。正式版的更新说明要写在标签说明里：git tag -a $GITHUB_REF_NAME -F notes.md"; exit 1
+            fi
+            git tag -l --format='%(contents)' "$GITHUB_REF_NAME" | sed '/^-----BEGIN PGP SIGNATURE-----/,$d; /^-----BEGIN SSH SIGNATURE-----/,$d' \
+              | sed -e 's/[[:space:]]*$//' | awk 'NF{p=1} p' > "$RUNNER_TEMP/tag-notes.md"
+            if ! grep -q '[^[:space:]]' "$RUNNER_TEMP/tag-notes.md"; then
+              echo "::error::标签 $GITHUB_REF_NAME 的说明是空的，正式版需要人工写更新说明"; exit 1
+            fi
+            echo "正式版更新说明："; cat "$RUNNER_TEMP/tag-notes.md"
           fi
 
       - name: 计算版本号
@@ -140,7 +152,12 @@ jobs:
           else
             log=$(git log --no-merges --format='- %s' -10 -- .)
           fi
+          # 去掉 Conventional Commits 前缀和 scope：「- feat(diary): xx」→「- xx」
+          log=$(printf '%s\n' "$log" | sed -E 's/^- (feat|fix|test|tests|chore|docs|doc|refactor|perf|ci|build|style|revert)(\([^)]*\))?!?[:：][[:space:]]*/- /I')
           [ -n "$log" ] || log="- 例行构建"
+          if [ "${{ steps.ver.outputs.channel }}" = stable ]; then
+            log=$(cat "$RUNNER_TEMP/tag-notes.md")   # 正式版：用人工写的标签说明（发布前检查里已取出并确认非空）
+          fi
           force=false
           if echo "$log" | grep -qiE '\[(强制更新|force)\]'; then force=true; fi
           min=0; $force && min=${{ steps.ver.outputs.code }}
