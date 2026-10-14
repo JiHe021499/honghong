@@ -2,29 +2,52 @@
 
 > 本文根据实际代码整理（2026-10-14）：`.github/workflows/android.yml`、`.github/workflows/ios.yml`、公开仓库 `JiHe021499/honghong-releases` 的 `.github/workflows/publish.yml`、`app/lib/services/update/update_service.dart`、`app/android/app/build.gradle.kts`、`backend/supabase/migrations/0001/0003`、`ml/src/publish_model.py`。改了这些文件请同步更新本文。
 
+## 0. 什么时候发版（2026-10-14 起）
+
+**提交到 master 不再发版。** push 或 PR 到 master 只跑测试和构建检查；只有打 `v*` 标签或在 master 上手动触发 Android 工作流，才会签名并发布到 honghong-releases。
+
+| 事件 | 测试 | 构建 | 签名 | 发布到 honghong-releases |
+|---|---|---|---|---|
+| push 到 master（改了 `app/**` 或工作流本身） | ✅ | ✅ 产物是 debug 签名的 APK（只放在 Actions 构建产物里） | ❌ | ❌ |
+| PR 到 master（同样的路径过滤） | ✅ | ✅ 同上 | ❌ | ❌ |
+| 推送 `v*` 标签 | ✅ | ✅ | ✅ | ✅ stable |
+| 手动 `workflow_dispatch`（只允许在 master 上，其他分支会直接报错） | ✅ | ✅ | ✅ | ✅ dev |
+
+- 不发布的运行不读取任何 secret，所以构建产物里没有编入云端地址，App 是离线的。这个包不能覆盖安装正式签名的版本，只用来检查能不能编过。
+- 合并 PR 就是一次 push 到 master，**不会发版**。
+- 发布运行不会被后来的推送取消（`cancel-in-progress` 只对普通推送和 PR 生效）。
+- iOS 只做未签名的构建检查，没有 TestFlight 或 App Store 步骤（见第 7 节）。
+- AI 网关和 Supabase **没有任何自动部署**，仓库里没有对应的工作流，都是手动部署（见 `backend/README.md`）。
+
 ## 1. 版本号
 
 | 场景 | versionName | versionCode | 渠道 |
 |---|---|---|---|
-| 推送到 `master` | `<pubspec 主.次>.<run_number>`，例如 `0.1.17` | `github.run_number`（Android APK 工作流的运行序号） | `dev`（预发布） |
-| 推送 `v*` 标签 | 标签去掉 `v`，例如 `v0.2.0` → `0.2.0` | 同上，仍是 `run_number` | `stable`（正式版） |
+| 推送 `v*` 标签 | 标签去掉 `v`，例如 `v0.2.0` → `0.2.0` | `github.run_number`（Android 工作流的运行序号） | `stable`（正式版） |
+| 在 master 上手动触发 | `<pubspec 主.次>.<run_number>-dev`，例如 `0.1.42-dev` | 同上 | `dev`（预发布） |
+| push 或 PR（不发布） | `<主.次>.<run_number>-ci`，只用于构建产物 | 同上 | — |
 
-- 主.次取自 `app/pubspec.yaml` 的 `version:`（目前 `0.1.0+1`，**只用前两段**，`+1` 和第三段不起作用）。要升到 0.2.x 就改 pubspec 为 `0.2.0+1`。
-- versionCode 只增不减（同一工作流的 run_number 单调递增，标签和分支推送共用一个计数），所以任何新包都能覆盖安装旧包。
+- 主.次取自 `app/pubspec.yaml` 的 `version:`（目前是 `0.1.0+1`，**只用前两段**，`+1` 和第三段不起作用）。要升到 0.2.x，就把 pubspec 改成 `0.2.0+1`。
+- 打标签时，标签的主.次必须和 pubspec 一致（例如 pubspec 是 `0.2.0+1`，就只能打 `v0.2.x`），否则 CI **直接报错、终止发布**。
+- versionCode 只增不减：同一工作流的 run_number 单调递增。不发布的运行（push 和 PR 的构建检查）也会消耗序号，所以发布出去的 versionCode **会跳号，这一点已确认可以接受**（2026-10-14 产品决定），新包一定能覆盖安装旧包。
+- 带 `-dev` 后缀不影响更新判断：App 只用 versionCode（整数）比较新旧，versionName 只用于显示和安装包文件名；releases 仓库把 versionName 原样用在 tag（`v0.1.42-dev`）、Release 标题和下载地址里，这些都允许 `-`。dev 版和正式版因此不会再撞名。
+- **iOS 版本号暂不统一**（产品决定）：iOS 仍然用它自己的 `0.1.<run_number>`，和 Android 对不上，也不响应标签。等上 TestFlight 时再统一。
 - 构建命令显式传 `--build-name/--build-number`，App 内 `PackageInfo.buildNumber` 就是 versionCode，更新检查用它比较。
 
 ## 2. 什么会触发构建
 
 **Android APK**（`android.yml`）：
-- `push` 到 `master` 且改动了 `app/**` 或 `.github/workflows/android.yml`；
-- `push` 标签 `v*`（GitHub 对标签推送不看 paths 过滤）；
-- 手动 `workflow_dispatch`（当前分支，按 dev 处理）。
-- 只改 `docs/`、`ml/`、`backend/`、README 不会出包。
-- 同一 ref 新推送会取消正在跑的旧构建（`concurrency: cancel-in-progress`）。
+- `push` 或 `pull_request` 到 `master`，且改动了 `app/**` 或 `.github/workflows/android.yml`：只做测试和构建。
+- `push` 标签 `v*`（GitHub 对标签推送不看 paths 过滤）：发布 stable。
+- 手动 `workflow_dispatch`：在 master 上发布 dev。
+- 只改 `docs/`、`ml/`、`backend/`、README，不会触发构建。
+- 普通推送或 PR 时，同一 ref 的新运行会取消正在跑的旧运行。
 
-**iOS（未签名）**（`ios.yml`）：`master` 上改了 `app/**` 或 `ios.yml`，或手动触发。见第 7 节。
+**iOS（未签名）**（`ios.yml`）：push 或 PR 到 `master` 且改了 `app/**` 或 `ios.yml`，或者手动触发。只做构建检查，见第 7 节。
 
 ## 3. Android 构建流程
+
+以下第 2、4、5 步只在发布时执行（标签或手动）；push 和 PR 时只做第 1 步，再加一次不读 secret 的 debug 签名构建。
 
 1. `flutter pub get` → `build_runner` → `flutter analyze` → `flutter test`（任何一步失败都不发布）。
 2. 从 secrets 写出 keystore 和 `android/key.properties`，构建：
@@ -92,8 +115,9 @@ App（仅 Android，`inAppUpdateSupported`）：
 
 ## 6. 发正式版（stable）步骤
 
+0. 想先出个 dev 包测试：GitHub → Actions → Android APK → Run workflow，分支选 master。
 1. 确认 master 最新的 dev 版已在真机上验证（至少一台中兴/一台其他品牌）。
-2. 如需升次版本，先改 `app/pubspec.yaml` 的 `version:`（例如 `0.2.0+1`）并推送（会先出一个 dev 包）。
+2. 如果要升次版本，先改 `app/pubspec.yaml` 的 `version:`（例如 `0.2.0+1`）并合进 master（不会发版）。
 3. 打标签并推送（标签名决定 versionName，**不要和已有 dev 版本号重名**，见第 10 节）：
    ```bash
    git tag -a v0.2.0 -m "哄哄 0.2.0"
@@ -112,7 +136,7 @@ App（仅 Android，`inAppUpdateSupported`）：
 
 APK 不能降级安装（versionCode 只能增），所以**回滚＝用旧代码发一个更高的版本号**：
 
-1. `git revert <坏提交>`（或修复），提交信息写清楚，必要时带 `[强制更新]`；推送 master → 自动出新 dev 包（versionCode 更大，所有人都能覆盖安装）。
+1. `git revert <坏提交>`（或修复），提交信息写清楚，必要时带 `[强制更新]`；合进 master 之后，**手动触发**一次 Android 工作流出新的 dev 包（versionCode 更大，所有人都能覆盖安装）；如果是正式版，就打补丁标签。
 2. 正式版出问题：在修复后的提交上打新的补丁标签（例如 `v0.2.1`）。
 3. 想让 App 立刻停止推送坏版本：可以手动编辑 honghong-releases 的 `version.json`，把顶层和 `channels` 指回上一个好版本——但已经装了坏版本的人不会被"降级"，只能等修复版。
 4. 不要删除已发布的 Release 资产（已下载但未安装的用户、镜像缓存会失效）。
@@ -131,8 +155,8 @@ APK 不能降级安装（versionCode 只能增），所以**回滚＝用旧代�
 ## 10. 发现的不一致 / 待改进
 
 1. **App 不区分渠道**：`UpdateService.check()` 调 `ReleaseInfo.parse()` 时没传 `channel`，用的是顶层（最近一次发布，不论 dev/stable）。所以「正式版用户只收正式版」目前不成立，`channels` 字段没被使用。需要在 App 里加渠道设置（或按当前包的渠道）。
-2. **标签版本号可能和 dev 版本撞名**：dev 版本名是 `0.1.<run_number>`，如果打 `v0.1.20` 而 dev 也曾发过 `0.1.20`，`publish.yml` 会**删掉同名 Release 重建**，覆盖掉 dev 的包。正式版请用不会出现在 dev 序列里的号（如升次版本 `0.2.0`），或以后改为 dev 带后缀。
-3. **iOS 和 Android 版本号不一致**：两个工作流各自的 run_number 不同，同一提交的 iOS `0.1.x` 和 Android `0.1.y` 对不上；iOS 也不响应 `v*` 标签。上 TestFlight 前应统一（例如都用 commit 计数或共享的版本来源）。
+2. ~~标签版本号可能和 dev 版本撞名~~：已解决，dev 版现在带 `-dev` 后缀。以下为历史说明：dev 版本名是 `0.1.<run_number>`，如果打 `v0.1.20` 而 dev 也曾发过 `0.1.20`，`publish.yml` 会**删掉同名 Release 重建**，覆盖掉 dev 的包。正式版请用不会出现在 dev 序列里的号（如升次版本 `0.2.0`），或以后改为 dev 带后缀。
+3. **iOS 和 Android 版本号不一致**（已确认等上 TestFlight 时再统一）：两个工作流各自的 run_number 不同，同一提交的 iOS `0.1.x` 和 Android `0.1.y` 对不上；iOS 也不响应 `v*` 标签。上 TestFlight 前应统一（例如都用 commit 计数或共享的版本来源）。
 4. **pubspec 的 `+build` 和第三段没用**，容易误导；可以在 pubspec 注释里写明。
 5. **强制更新只维持一版**：下一次普通发布 `minSupportedVersionCode` 归 0，跳过强制版本、直接从更老版本升到更新版本的用户不会被强制。若需要「低于某版本必须升级」，应把 minSupportedVersionCode 做成持续继承的最大值。
 6. **更新日志只取 `app/` 目录的提交**（`git log … -- .` 在 app 目录执行），只改 CI/文档的提交不会出现在日志里（这是预期，但标记 `[强制更新]` 也必须写在动了 `app/` 的提交里才生效）。

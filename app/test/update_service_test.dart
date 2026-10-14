@@ -96,6 +96,21 @@ void main() {
 
   group('版本比较', () {
     final info = ReleaseInfo.parse(versionJson());
+    test('dev 版带 -dev 后缀：照常解析，只按 versionCode 比较', () {
+      final dev = ReleaseInfo.parse({
+        ...versionJson(),
+        'versionName': '0.1.50-dev',
+        'versionCode': 50,
+        'apkUrl': 'https://github.com/JiHe021499/honghong-releases/releases/download/v0.1.50-dev/honghong-0.1.50-dev.apk',
+        'apkName': 'honghong-0.1.50-dev.apk',
+      });
+      expect(dev.versionName, '0.1.50-dev');
+      expect(UpdateCheck(dev, 49).hasUpdate, isTrue);
+      expect(UpdateCheck(dev, 50).hasUpdate, isFalse);
+      // 正式版 0.2.0（code 51）比 0.1.50-dev（code 50）新；名字里的后缀不参与比较
+      final stable = ReleaseInfo.parse({...versionJson(), 'versionName': '0.2.0', 'versionCode': 51});
+      expect(UpdateCheck(stable, 50).hasUpdate, isTrue);
+    });
     test('versionCode 大才算新版本', () {
       expect(UpdateCheck(info, 40).hasUpdate, isTrue);
       expect(UpdateCheck(info, 42).hasUpdate, isFalse);
