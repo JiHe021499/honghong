@@ -119,13 +119,24 @@ class FamilySync {
     final b = await (_db.select(_db.babies)..where((b) => b.dirty)).getSingleOrNull();
     if (b == null) return;
     final at = b.updatedAt ?? AppClock.now();
-    await _api.pushBaby({
+    final row = <String, dynamic>{
       'id': b.id,
       'nickname': b.nickname,
       'birth_date': b.birthDate.toIso8601String().substring(0, 10),
-      'gender': b.gender,
       'updated_at': _ts(at),
-    });
+      if (b.gender != null && b.gender!.isNotEmpty) 'gender': b.gender,
+    };
+    try {
+      await _api.pushBaby(row);
+    } on CloudException catch (e) {
+      // 线上未跑 0004：push_baby 还是 4 参数，带 gender 会被当成找不到函数
+      if (row.containsKey('gender') && (e.code == 'PGRST202' || e.message.contains('Could not find the function') || e.message.contains('找不到函数'))) {
+        row.remove('gender');
+        await _api.pushBaby(row);
+      } else {
+        rethrow;
+      }
+    }
     await (_db.update(_db.babies)..where((x) => x.id.equals(b.id) & x.updatedAt.equalsNullable(b.updatedAt)))
         .write(const BabiesCompanion(dirty: Value(false)));
   }

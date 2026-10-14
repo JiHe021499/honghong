@@ -49,8 +49,10 @@ abstract class CloudApi {
 
 /// 友好的错误（直接显示给用户）
 class CloudException implements Exception {
-  CloudException(this.message);
+  CloudException(this.message, {this.code});
   final String message;
+  /// PostgREST / Postgres 错误码，例如 PGRST202（找不到函数）、P0001（业务异常）
+  final String? code;
   @override
   String toString() => message;
 }

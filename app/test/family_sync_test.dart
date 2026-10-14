@@ -105,6 +105,22 @@ void main() {
     expect(await CareLogRepository(dbB).all(), isEmpty);
   });
 
+
+  test('服务端拒绝 p_gender 时家庭同步仍能完成（昵称照常推送）', () async {
+    final baby = await BabyRepository(dbA).ensureDefault();
+    await a.create(name: '爸爸', avatar: 'dad');
+    await b.join(code: server.invites.keys.single, name: '妈妈', avatar: 'mom');
+    // 模拟线上未跑 0004：带 gender 的推送被拒，不带则成功
+    server.rejectGenderInPush = true;
+    await BabyRepository(dbA).updateGender(baby.id, 'girl');
+    await (dbA.update(dbA.babies)..where((x) => x.id.equals(baby.id)))
+        .write(BabiesCompanion(updatedAt: Value(DateTime.now().add(const Duration(seconds: 2))), nickname: const Value('小宝')));
+    await a.sync();
+    expect(server.babies.values.single['nickname'], '小宝');
+    expect(server.babies.values.single.containsKey('gender'), isFalse, reason: '旧服务端收不到 gender，但不阻断同步');
+    expect((await dbA.select(dbA.babies).getSingle()).dirty, isFalse);
+  });
+
   test('宝宝性别随家庭同步（妈咪日记 v5）；服务端没有 gender 列时保留本地值', () async {
     final baby = await BabyRepository(dbA).ensureDefault();
     await a.create(name: '爸爸', avatar: 'dad');
