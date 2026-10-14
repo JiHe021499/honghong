@@ -19,3 +19,4 @@ backend/supabase/docker/.env
 !app/assets/models/yamnet_embed.tflite
 !app/assets/models/cry_head.tflite
 ml/build/
+web/download/data/

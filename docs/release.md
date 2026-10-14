@@ -161,3 +161,53 @@ APK 不能降级安装（versionCode 只能增），所以**回滚＝用旧代�
 5. **强制更新只维持一版**：下一次普通发布 `minSupportedVersionCode` 归 0，跳过强制版本、直接从更老版本升到更新版本的用户不会被强制。若需要「低于某版本必须升级」，应把 minSupportedVersionCode 做成持续继承的最大值。
 6. **更新日志只取 `app/` 目录的提交**（`git log … -- .` 在 app 目录执行），只改 CI/文档的提交不会出现在日志里（这是预期，但标记 `[强制更新]` 也必须写在动了 `app/` 的提交里才生效）。
 7. 迁移 0001 里的 `eligible_model` 没有 `coalesce`（uid 为空时出错），0003 已用 `create or replace` 修正，新库按顺序执行即可。
+
+## 11. 应用分发页（/download、/download/beta）
+
+代码在 `web/download/`，说明见该目录 README。页面运行时读 honghong-releases 的公开 `version.json`：`channels.stable` 给正式版页，`channels.dev` 给测试版页。发版后页面自动更新，不用改 config，releases 仓库也不用改。
+
+**服务器布局（nc_am，1Panel OpenResty 容器 `1Panel-openresty-UXJT`，宿主机 `/opt/1panel/www` 挂到容器内 `/www`）**
+- 静态文件：`/opt/1panel/www/sites/honghong.hczhw.com/download/`（`index.html`、`beta/`、`assets/`、`data/version.json`）
+- location：`/opt/1panel/www/sites/honghong.hczhw.com/proxy/download.conf`（内容即 `web/download/deploy/download.conf`，站点的 `include proxy/*.conf` 会自动加载）
+- 版本数据同步：`/opt/honghong-download/sync-version.sh`，宿主机 crontab 每 5 分钟跑一次，只读公开地址，不需要任何密钥
+
+**首次上线（需本人确认后执行）**
+```sh
+# box 上
+cd /workspace/honghong/web/download
+tar czf /tmp/download-page.tgz index.html beta assets
+scp /tmp/download-page.tgz deploy/sync-version.sh deploy/download.conf nc-am:/tmp/
+# nc_am 上
+S=/opt/1panel/www/sites/honghong.hczhw.com
+sudo mkdir -p $S/download && sudo tar xzf /tmp/download-page.tgz -C $S/download
+sudo install -D -m 755 /tmp/sync-version.sh /opt/honghong-download/sync-version.sh
+sudo /opt/honghong-download/sync-version.sh            # 先手动跑一次，生成 data/version.json
+sudo install -m 644 /tmp/download.conf $S/proxy/download.conf
+sudo docker exec 1Panel-openresty-UXJT nginx -t && sudo docker exec 1Panel-openresty-UXJT nginx -s reload
+( sudo crontab -l 2>/dev/null; echo '*/5 * * * * /opt/honghong-download/sync-version.sh >> /opt/honghong-download/sync.log 2>&1' ) | sudo crontab -
+# 验证
+curl -sI https://honghong.hczhw.com/download | grep -i location          # 301 → /download/
+curl -s  https://honghong.hczhw.com/download/ | grep -c data-kind=\"release\"
+curl -sI https://honghong.hczhw.com/download/beta/ | grep -i x-robots-tag
+curl -s  https://honghong.hczhw.com/download/data/version.json | python3 -m json.tool | head
+curl -s -o /dev/null -w '%{http_code}\n' https://honghong.hczhw.com/ai/healthz   # 原有网关不受影响，应为 200
+```
+
+**之后更新页面本身**（版本数据不用管，cron 会同步）
+```sh
+scp /tmp/download-page.tgz nc-am:/tmp/
+S=/opt/1panel/www/sites/honghong.hczhw.com
+sudo rm -rf $S/download.new && sudo mkdir $S/download.new && sudo tar xzf /tmp/download-page.tgz -C $S/download.new
+sudo cp -a $S/download/data $S/download.new/
+sudo rm -rf $S/download.prev && sudo mv $S/download $S/download.prev && sudo mv $S/download.new $S/download
+```
+
+**回滚**
+- 只回滚页面：`sudo rm -rf $S/download && sudo mv $S/download.prev $S/download`
+- 整个下线：`sudo rm $S/proxy/download.conf && sudo docker exec 1Panel-openresty-UXJT nginx -t && sudo docker exec 1Panel-openresty-UXJT nginx -s reload`；再 `sudo crontab -e` 删掉 sync-version 那一行；静态目录可留可删。下线后 `/download` 回到站点原来的 404。
+
+**注意**
+- 不要把 `web/download/deploy/` 和 README 传上服务器。
+- 在 1Panel 面板里改这个站点的「反向代理」时，留意它不会覆盖 `proxy/download.conf`（文件名和面板生成的不同）。
+- APK 下载地址是 GitHub Release 资产（`github.com/.../releases/download/...`），国内网络可能慢或打不开。
+
