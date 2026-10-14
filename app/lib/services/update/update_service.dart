@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/app_clock.dart';
 
 /// 公开发布仓库里的 version.json（由 CI 生成，见 .github/workflows/android.yml）
 class ReleaseInfo {
@@ -89,7 +90,7 @@ class UpdateService {
     this.mirrorPrefixes = defaultMirrors,
     this.interval = const Duration(hours: 6),
     DateTime Function()? clock,
-  }) : _now = clock ?? DateTime.now;
+  }) : _now = clock ?? AppClock.now;
 
   static const releasesRepo = 'JiHe021499/honghong-releases';
   static const defaultSources = ['https://raw.githubusercontent.com/$releasesRepo/main/version.json'];

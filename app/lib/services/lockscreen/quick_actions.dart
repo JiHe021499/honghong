@@ -5,6 +5,7 @@ import '../../data/repositories/baby_repository.dart';
 import '../../data/repositories/care_log_repository.dart';
 import '../../domain/models/care_detail.dart';
 import '../../domain/models/care_log_type.dart';
+import '../../core/app_clock.dart';
 
 /// 锁屏快捷记录的纯逻辑（不依赖通知插件，方便测试）。设计见 docs/design/lockscreen.html。
 ///
@@ -88,7 +89,7 @@ QuickState buildQuickState({
 
 /// 执行一个锁屏按钮，返回确认文字。数据写入方式和 App 里完全一致（会标记待同步给家人）。
 Future<String?> runQuickAction(AppDatabase db, String id, {DateTime? now}) async {
-  final at = now ?? DateTime.now();
+  final at = now ?? AppClock.now();
   final baby = await BabyRepository(db).ensureDefault();
   final logs = CareLogRepository(db);
   if (id == 'diaper') {
@@ -125,7 +126,7 @@ Future<QuickState> loadQuickState(AppDatabase db, {String? done, DateTime? now})
     babyName: baby.nickname,
     active: active,
     latest: await logs.latestByType(baby.id),
-    now: now ?? DateTime.now(),
+    now: now ?? AppClock.now(),
     done: done,
   );
 }

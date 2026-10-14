@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'cloud_api.dart';
+import '../../core/app_clock.dart';
 
 class SupabaseCloudApi implements CloudApi {
   SupabaseCloudApi(this._c);
@@ -57,7 +58,7 @@ class SupabaseCloudApi implements CloudApi {
   @override
   Future<String?> inviteCode() async {
     await ensureSignedIn();
-    final r = await _c.from('family_invites').select('code').gt('expires_at', DateTime.now().toUtc().toIso8601String()).limit(1);
+    final r = await _c.from('family_invites').select('code').gt('expires_at', AppClock.now().toUtc().toIso8601String()).limit(1);
     return r.isEmpty ? null : r.first['code'] as String;
   }
 

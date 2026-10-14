@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../../data/db/app_database.dart';
 import '../audio/wav_trim.dart';
 import 'cloud_api.dart';
+import '../../core/app_clock.dart';
 
 /// "参与改进"：只上传有反馈、且录音在本机的哭声（16kHz 单声道，最长 30 秒）+ 标注。
 /// 默认关闭；只在 Wi-Fi 下传；失败的下次再试（以本地 uuid 为主键，重复上传幂等）。
@@ -24,7 +25,7 @@ class ResearchUploader {
 
   Future<void> setEnabled(bool v) async {
     await _prefs.setBool(kOptIn, v);
-    if (v) await _prefs.setString(kConsentAt, DateTime.now().toIso8601String());
+    if (v) await _prefs.setString(kConsentAt, AppClock.now().toIso8601String());
   }
 
   /// 待上传：有反馈、有本机录音、还没传过
@@ -52,7 +53,7 @@ class ResearchUploader {
     if (todo.isEmpty) return (ok: 0, failed: 0);
     final uid = await _api.ensureSignedIn();
     await _api.upsertDevice(
-        appVersion: appVersion, consentAt: DateTime.tryParse(_prefs.getString(kConsentAt) ?? '') ?? DateTime.now());
+        appVersion: appVersion, consentAt: DateTime.tryParse(_prefs.getString(kConsentAt) ?? '') ?? AppClock.now());
     var ok = 0, failed = 0;
     final babiesDone = <String>{};
     for (final e in todo) {

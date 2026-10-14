@@ -6,6 +6,7 @@ import '../../data/db/app_database.dart';
 import '../../domain/models/care_detail.dart';
 import '../../domain/models/care_log_type.dart';
 import 'care_sheets.dart';
+import '../../core/app_clock.dart';
 
 /// 首页快捷记录的交互：开始计时 / 结束（弹面板）/ 换尿布一点即记
 class CareActions {
@@ -20,7 +21,7 @@ class CareActions {
   /// 点"结束"：先停表写入结束时间，再弹出详情面板。
   Future<void> end(BuildContext context, CareLog log) async {
     final repo = ref.read(careLogRepositoryProvider);
-    final stoppedAt = DateTime.now();
+    final stoppedAt = AppClock.now();
     await repo.stopSession(log.id, at: stoppedAt);
     final previous = await _previousDetail(log);
     if (!context.mounted) return;

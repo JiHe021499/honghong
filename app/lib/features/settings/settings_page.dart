@@ -22,6 +22,7 @@ import 'package:home_widget/home_widget.dart';
 
 import '../../services/export/export_service.dart';
 import '../update/update_providers.dart';
+import '../../core/app_clock.dart';
 
 /// 我的：宝宝信息、夜间模式、自动监听、全部记录、导出
 class SettingsPage extends ConsumerStatefulWidget {
@@ -200,8 +201,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         final d = await showDatePicker(
                           context: context,
                           initialDate: baby.birthDate,
-                          firstDate: DateTime.now().subtract(const Duration(days: 1000)),
-                          lastDate: DateTime.now(),
+                          firstDate: AppClock.now().subtract(const Duration(days: 1000)),
+                          lastDate: AppClock.now(),
                         );
                         if (d == null) return;
                         await ref.read(babyRepositoryProvider).updateBirthDate(baby.id, d);

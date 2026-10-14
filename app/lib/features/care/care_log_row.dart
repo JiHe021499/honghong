@@ -8,6 +8,7 @@ import '../../core/widgets/hh_widgets.dart';
 import '../../data/db/app_database.dart';
 import '../../domain/models/care_detail.dart';
 import '../../domain/models/care_log_type.dart';
+import '../../core/app_clock.dart';
 
 /// 首页「今天的记录」和「全部记录」共用的记录行（设计稿 19）：
 /// 图标 | 第一行 类型 · 关键细节（加粗）/ 第二行 次要信息（时长、侧别、奶量、尿布类型）| 右侧时间列右对齐
@@ -38,7 +39,7 @@ class CareLogRow extends ConsumerWidget {
     final highlight = live || fresh;
     final lines = live ? (title: t.runningLabel, subtitle: '') : logLines(t, log.startedAt, log.endedAt, log.detail);
     final badge = live
-        ? _Badge('计时 ${formatTimer((now?.call() ?? DateTime.now()).difference(log.startedAt))}', c.peachL, c.peach2)
+        ? _Badge('计时 ${formatTimer((now?.call() ?? AppClock.now()).difference(log.startedAt))}', c.peachL, c.peach2)
         : fresh
             ? _Badge('刚刚', const Color(0xFFD4EDDC), c.greenInk)
             : null;

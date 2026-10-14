@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/db/app_database.dart';
 import '../../data/repositories/baby_repository.dart';
 import 'cloud_api.dart';
+import '../../core/app_clock.dart';
 
 /// 家庭同步：本地优先。
 /// - 本地每次修改都写 updated_at 并标记 dirty；同步时先推送 dirty 行，
@@ -72,7 +73,7 @@ class FamilySync {
   }
 
   Future<void> _markAllDirty() async {
-    final now = DateTime.now();
+    final now = AppClock.now();
     await (_db.update(_db.careLogs)..where((l) => l.updatedAt.isNull())).write(CareLogsCompanion(updatedAt: Value(now)));
     await (_db.update(_db.cryEvents)..where((e) => e.updatedAt.isNull())).write(CryEventsCompanion(updatedAt: Value(now)));
     await _db.update(_db.careLogs).write(const CareLogsCompanion(dirty: Value(true)));
@@ -110,14 +111,14 @@ class FamilySync {
     var n = await _pullLogs(fid);
     n += await _pullCries(fid);
     await _pullBaby(fid);
-    await _prefs.setString(kLastSync, DateTime.now().toIso8601String());
+    await _prefs.setString(kLastSync, AppClock.now().toIso8601String());
     return n;
   }
 
   Future<void> _pushBaby() async {
     final b = await (_db.select(_db.babies)..where((b) => b.dirty)).getSingleOrNull();
     if (b == null) return;
-    final at = b.updatedAt ?? DateTime.now();
+    final at = b.updatedAt ?? AppClock.now();
     await _api.pushBaby({
       'id': b.id,
       'nickname': b.nickname,
@@ -227,7 +228,7 @@ class FamilySync {
         if (other != null) {
           if (!other.startedAt.isAfter(started)) {
             await (_db.update(_db.careLogs)..where((l) => l.id.equals(other.id))).write(
-                CareLogsCompanion(endedAt: Value(started), updatedAt: Value(DateTime.now()), dirty: const Value(true)));
+                CareLogsCompanion(endedAt: Value(started), updatedAt: Value(AppClock.now()), dirty: const Value(true)));
           } else {
             ended = other.startedAt;
             dirty = true;
@@ -241,7 +242,7 @@ class FamilySync {
             startedAt: started,
             endedAt: Value(ended),
             detail: Value(r['detail'] as String?),
-            updatedAt: Value(dirty ? DateTime.now() : remoteAt),
+            updatedAt: Value(dirty ? AppClock.now() : remoteAt),
             updatedBy: Value(dirty || r['updated_by'] == _api.userId ? null : r['updated_by'] as String?),
             deleted: Value(deleted),
             dirty: Value(dirty),

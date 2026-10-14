@@ -13,6 +13,7 @@ import '../../domain/diary/summary_service.dart';
 import '../../services/diary/diary_api.dart';
 import '../../services/diary/cloud_voice_capture.dart';
 import '../../services/diary/voice_capture.dart';
+import '../../core/app_clock.dart';
 
 /// 未配置 AI 网关（AI_GATEWAY_URL 或云端为空）时为 null：语音/整理不可用，文字可手动保存为“其他”。测试里注入假实现。
 /// 网关调用用的 JWT：Supabase 匿名登录
@@ -49,7 +50,7 @@ final diaryServiceProvider = Provider((ref) => DiaryService(ref.watch(databasePr
 /// 今天的日记时间线（日记主页“今天的日记”）
 final todayDiaryProvider = StreamProvider.autoDispose<List<TimelineEntry>>((ref) async* {
   final baby = await ref.watch(currentBabyProvider.future);
-  yield* ref.watch(diaryRepositoryProvider).watchTimeline(baby.id, DateTime.now());
+  yield* ref.watch(diaryRepositoryProvider).watchTimeline(baby.id, AppClock.now());
 });
 
 /// 某天的小结行（随数据库变化刷新）
@@ -90,7 +91,7 @@ class CloudAsrConsentNotifier extends Notifier<bool?> {
 }
 
 /// 今日小结服务（时钟可在测试里替换）
-final summaryClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
+final summaryClockProvider = Provider<DateTime Function()>((ref) => AppClock.now);
 final summaryServiceProvider =
     Provider((ref) => SummaryService(ref.watch(databaseProvider), api: ref.watch(diaryApiProvider), now: ref.watch(summaryClockProvider)));
 

@@ -1,6 +1,8 @@
 @Tags(['golden'])
 library;
 
+import 'package:honghong/core/app_clock.dart';
+
 import 'dart:io';
 
 import 'package:drift/drift.dart' show driftRuntimeOptions;
@@ -44,10 +46,11 @@ void main() {
   }
 
   testWidgets('妈咪日记主流程截图', (tester) async {
+    fixClock(tester, DateTime(2026, 10, 14, 18, 30));
     tester.view.physicalSize = const Size(390 * 3, 844 * 3);
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
-    final now = DateTime.now();
+    final now = AppClock.now();
     final h = now.subtract(const Duration(minutes: 20));
     String hm(DateTime t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
     final api = FakeApi(json: {

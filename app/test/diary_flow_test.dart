@@ -1,3 +1,4 @@
+import 'package:honghong/core/app_clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:honghong/data/db/app_database.dart';
@@ -55,7 +56,7 @@ class FakeVoice implements VoiceCapture {
 }
 
 class Clock {
-  DateTime t = DateTime.now();
+  DateTime t = AppClock.now();
   DateTime call() => t;
 }
 

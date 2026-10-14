@@ -1,6 +1,8 @@
 @Tags(['golden'])
 library;
 
+import 'package:honghong/core/app_clock.dart';
+
 import 'dart:io';
 
 import 'package:drift/drift.dart' show driftRuntimeOptions;
@@ -40,7 +42,7 @@ Future<void> _loadFonts() async {
 }
 
 Future<void> _seed(AppDatabase db) async {
-  final now = DateTime.now();
+  final now = AppClock.now();
   await db.into(db.babies).insert(BabiesCompanion.insert(id: 'b', nickname: '小米粒', birthDate: now.subtract(const Duration(days: 23))));
   final logs = CareLogRepository(db);
   final d = DateTime(now.year, now.month, now.day);
@@ -101,6 +103,7 @@ void main() {
   }
 
   testWidgets('护理记录流程截图', (tester) async {
+    fixClock(tester, DateTime(2026, 10, 14, 18, 30));
     await phone(tester);
     final db = await pumpApp(tester, seed: _seed, prefs: {'auto_listen': true});
     // 图片在测试里异步解码，先把所有图标预加载，截图才不会缺图

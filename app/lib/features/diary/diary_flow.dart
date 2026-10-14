@@ -5,6 +5,7 @@ import '../../core/providers.dart';
 import '../../domain/diary/parse_result.dart';
 import '../../services/diary/diary_api.dart';
 import 'diary_providers.dart';
+import '../../core/app_clock.dart';
 
 sealed class FlowOutcome {}
 
@@ -23,7 +24,7 @@ class NetworkDraft extends FlowOutcome {
 final diaryFlowProvider = Provider((ref) => DiaryFlow(ref));
 
 /// 测试用固定时钟
-final diaryClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
+final diaryClockProvider = Provider<DateTime Function()>((ref) => AppClock.now);
 
 class DiaryFlow {
   DiaryFlow(this.ref);

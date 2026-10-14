@@ -7,6 +7,7 @@ import '../audio/auto_listen.dart';
 import '../audio/cry_embedder.dart';
 import '../cloud/cloud_providers.dart';
 import 'model_manager.dart';
+import '../../core/app_clock.dart';
 
 final headLoaderProvider = Provider<HeadLoader>((ref) => TfliteHeadLoader());
 
@@ -40,7 +41,7 @@ Future<String?> checkModelUpdate(Ref ref, {bool force = false}) async {
   if (api == null) return null;
   final mgr = ref.read(modelManagerProvider);
   final last = DateTime.tryParse(ref.read(prefsProvider).getString(ModelManager.kLastCheck) ?? '');
-  if (!force && last != null && DateTime.now().difference(last) < const Duration(hours: 6)) return null;
+  if (!force && last != null && AppClock.now().difference(last) < const Duration(hours: 6)) return null;
   final current = await ref.read(activeModelProvider.future);
   final v = await mgr.checkForUpdate(api, currentVersion: current?.meta.version);
   if (v != null) {

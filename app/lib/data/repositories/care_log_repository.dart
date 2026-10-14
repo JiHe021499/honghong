@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../../domain/models/care_detail.dart';
 import '../../domain/models/care_log_type.dart';
 import '../db/app_database.dart';
+import '../../core/app_clock.dart';
 
 /// 护理记录。
 /// - 喂奶/睡觉/拍嗝是计时记录：开始时 ended_at 为空（进行中），结束时写入。
@@ -17,7 +18,7 @@ class CareLogRepository {
   Future<String> add(String babyId, CareLogType type,
       {DateTime? at, DateTime? endedAt, String? detail, String source = 'quick'}) async {
     final id = const Uuid().v4();
-    final start = at ?? DateTime.now();
+    final start = at ?? AppClock.now();
     await _db.into(_db.careLogs).insert(CareLogsCompanion.insert(
           id: id,
           babyId: babyId,
@@ -25,7 +26,7 @@ class CareLogRepository {
           startedAt: start,
           endedAt: Value(endedAt ?? start),
           detail: Value(detail),
-          updatedAt: Value(DateTime.now()),
+          updatedAt: Value(AppClock.now()),
           source: Value(source),
         ));
     return id;
@@ -43,8 +44,8 @@ class CareLogRepository {
             id: id,
             babyId: babyId,
             type: type.name,
-            startedAt: at ?? DateTime.now(),
-            updatedAt: Value(DateTime.now()),
+            startedAt: at ?? AppClock.now(),
+            updatedAt: Value(AppClock.now()),
           ));
       return byId(id).then((v) => v!);
     });
@@ -53,7 +54,7 @@ class CareLogRepository {
   /// 点"结束"：停止计时（写入结束时间），之后可在底部面板里微调或"继续"。
   Future<void> stopSession(String id, {DateTime? at}) =>
       (_db.update(_db.careLogs)..where((l) => l.id.equals(id)))
-          .write(CareLogsCompanion(endedAt: Value(at ?? DateTime.now()), updatedAt: Value(DateTime.now()), updatedBy: const Value(null), dirty: const Value(true)));
+          .write(CareLogsCompanion(endedAt: Value(at ?? AppClock.now()), updatedAt: Value(AppClock.now()), updatedBy: const Value(null), dirty: const Value(true)));
 
   /// 点"继续"：撤销结束，回到进行中（开始时间不变）。
   Future<void> resumeSession(String id) async {
@@ -63,7 +64,7 @@ class CareLogRepository {
     final other = await activeSession(log.babyId, type);
     if (other != null && other.id != id) return; // 已经开了新的，不覆盖
     await (_db.update(_db.careLogs)..where((l) => l.id.equals(id)))
-        .write(CareLogsCompanion(endedAt: const Value(null), updatedAt: Value(DateTime.now()), updatedBy: const Value(null), dirty: const Value(true)));
+        .write(CareLogsCompanion(endedAt: const Value(null), updatedAt: Value(AppClock.now()), updatedBy: const Value(null), dirty: const Value(true)));
   }
 
   /// 保存记录：按微调后的时长写结束时间，并写入细节。
@@ -75,7 +76,7 @@ class CareLogRepository {
         CareLogsCompanion(
             endedAt: Value(log.startedAt.add(duration)),
             detail: Value(detail?.encode()),
-            updatedAt: Value(DateTime.now()),
+            updatedAt: Value(AppClock.now()),
             updatedBy: const Value(null),
             dirty: const Value(true)));
   }
@@ -101,14 +102,14 @@ class CareLogRepository {
         startedAt: Value(start),
         endedAt: Value(type.isTimed ? end : start),
         detail: Value(detail?.encode()),
-        updatedAt: Value(DateTime.now()),
+        updatedAt: Value(AppClock.now()),
         updatedBy: const Value(null),
         dirty: const Value(true)));
   }
 
   /// 校验补记/修改的时间；没问题返回 null
   static String? validateTimes(CareLogType type, DateTime start, DateTime? end, {DateTime? now}) {
-    final n = (now ?? DateTime.now()).add(const Duration(minutes: 1));
+    final n = (now ?? AppClock.now()).add(const Duration(minutes: 1));
     if (start.isAfter(n)) return '开始时间不能晚于现在';
     if (!type.isTimed) return null;
     if (end == null) return '请选择结束时间';
@@ -126,7 +127,7 @@ class CareLogRepository {
           ..where((l) =>
               l.babyId.equals(babyId) & l.deleted.not() & l.type.equals(type.name) & l.startedAt.isSmallerThanValue(end)))
         .get();
-    final now = DateTime.now();
+    final now = AppClock.now();
     return rows.where((r) {
       if (r.id == excludeId) return false;
       final rEnd = r.endedAt ?? now;
@@ -141,7 +142,7 @@ class CareLogRepository {
 
   Future<void> updateDetail(String id, CareDetail detail) =>
       (_db.update(_db.careLogs)..where((l) => l.id.equals(id)))
-          .write(CareLogsCompanion(detail: Value(detail.encode()), updatedAt: Value(DateTime.now()), updatedBy: const Value(null), dirty: const Value(true)));
+          .write(CareLogsCompanion(detail: Value(detail.encode()), updatedAt: Value(AppClock.now()), updatedBy: const Value(null), dirty: const Value(true)));
 
   Future<CareLog?> byId(String id) =>
       (_db.select(_db.careLogs)..where((l) => l.id.equals(id) & l.deleted.not()))
@@ -172,7 +173,7 @@ class CareLogRepository {
   Future<void> delete(String id) async {
     final log = await byId(id);
     if (log == null) return;
-    final now = DateTime.now();
+    final now = AppClock.now();
     await (_db.update(_db.careLogs)..where((l) => l.id.equals(id))).write(CareLogsCompanion(
         deleted: const Value(true), endedAt: Value(log.endedAt ?? now), updatedAt: Value(now), updatedBy: const Value(null), dirty: const Value(true)));
   }

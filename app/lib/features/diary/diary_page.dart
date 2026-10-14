@@ -20,6 +20,7 @@ import 'diary_providers.dart';
 import 'diary_sheets.dart';
 import 'diary_widgets.dart';
 import '../../services/diary/voice_capture.dart';
+import '../../core/app_clock.dart';
 
 enum MicState { idle, recording, cancelZone, processing }
 
@@ -69,7 +70,7 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
     if (prefs.getBool(kDiaryGenderPrompted) ?? false) return;
     final baby = await ref.read(currentBabyProvider.future);
     if (baby.gender != null || !mounted) return;
-    final days = DateTime.now().difference(baby.birthDate).inDays;
+    final days = AppClock.now().difference(baby.birthDate).inDays;
     final g = await showGenderSheet(context, nickname: baby.nickname, days: days);
     await prefs.setBool(kDiaryGenderPrompted, true);
     if (g != null) {
@@ -221,7 +222,7 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
   Widget build(BuildContext context) {
     final c = context.hh;
     final baby = ref.watch(currentBabyProvider).value;
-    final days = baby == null ? null : DateTime.now().difference(baby.birthDate).inDays;
+    final days = baby == null ? null : AppClock.now().difference(baby.birthDate).inDays;
     final entries = ref.watch(todayDiaryProvider).value ?? const <TimelineEntry>[];
     return Scaffold(
       body: SafeArea(
@@ -503,7 +504,7 @@ class _TodayList extends ConsumerWidget {
         ),
       ]);
     }
-    final now = DateTime.now();
+    final now = AppClock.now();
     final aggs = ref.watch(aggregateIdsProvider(DateTime(now.year, now.month, now.day))).value ?? const <String>{};
     final rows = timelineOrder(entries, aggregates: aggs).take(2).toList();
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
