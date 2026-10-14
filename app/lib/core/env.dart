@@ -3,3 +3,8 @@
 const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 bool get cloudConfigured => supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
+
+/// 妈咪日记 AI 网关地址（--dart-define=AI_GATEWAY_URL=...），例如线上预计为
+/// https://honghong.hczhw.com/ai/ （尚未部署）。为空时语音/文字整理不可用，只能手动保存为“其他”。
+const aiGatewayUrl = String.fromEnvironment('AI_GATEWAY_URL');
+bool get aiGatewayConfigured => cloudConfigured && aiGatewayUrl.isNotEmpty;

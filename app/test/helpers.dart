@@ -11,7 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// 用内存数据库和假的 SharedPreferences 启动整个 App
 Future<AppDatabase> pumpApp(WidgetTester tester,
-    {AppDatabase? db, Map<String, Object> prefs = const {}, Future<void> Function(AppDatabase db)? seed}) async {
+    {AppDatabase? db, Map<String, Object> prefs = const {}, Future<void> Function(AppDatabase db)? seed, List overrides = const []}) async {
   SharedPreferences.setMockInitialValues(prefs);
   await initializeDateFormatting('zh_CN');
   final sp = await SharedPreferences.getInstance();
@@ -21,6 +21,7 @@ Future<AppDatabase> pumpApp(WidgetTester tester,
     overrides: [
       prefsProvider.overrideWithValue(sp),
       databaseProvider.overrideWithValue(database),
+      ...overrides.cast(),
     ],
     child: const HonghongApp(),
   ));
