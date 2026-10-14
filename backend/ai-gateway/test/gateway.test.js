@@ -25,7 +25,7 @@ const post = (base, path, body, token) => fetch(base + path, { method: 'POST', h
 test('healthz 可访问且报告 LLM 是否配置', () => withServer({}, async (b) => {
   const r = await fetch(b + '/healthz');
   assert.equal(r.status, 200);
-  assert.deepEqual(await r.json(), { ok: true, llm_configured: true });
+  assert.deepEqual(await r.json(), { ok: true, llm_configured: true, asr_configured: false });
 }));
 
 test('未配置 Key 时 healthz 报未配置，parse 返回 503', async () => {

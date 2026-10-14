@@ -86,7 +86,7 @@ export function createHandler(cfg, {
     const meta = {};
     const done = (code, body) => { json(res, code, body); log({ route: path, code, ms: Date.now() - t0, ...meta }); };
     try {
-      if (req.method === 'GET' && path === 'healthz') return done(200, { ok: true, llm_configured: llm.configured });
+      if (req.method === 'GET' && path === 'healthz') return done(200, { ok: true, llm_configured: llm.configured, asr_configured: Boolean(cfg.xfyun?.configured) });
       const handler = routes[path];
       if (!handler) return done(404, { error: 'not_found' });
       if (req.method !== 'POST') return done(405, { error: 'method_not_allowed' });

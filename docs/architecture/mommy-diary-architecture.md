@@ -61,7 +61,7 @@ flowchart LR
 | DiaryRepository | `data/repositories/diary_repository.dart` | diary_inputs / diary_cards / daily_summaries CRUD 与时间线合并查询 |
 | SummaryService | `domain/diary/summary_service.dart` | 21:00 后触发、幂等、存储 |
 | RiskWords | `domain/diary/risk_words.dart` | 本地风险词表（高烧、抽搐、呼吸困难…），只出通用提示 |
-| ai-gateway | `backend/ai-gateway/`（新，独立服务） | parse、summary（本期不含云 ASR）；校验与合规 |
+| ai-gateway | `backend/ai-gateway/`（新，独立服务） | parse、summary、diary-asr（讯飞联网识别 WebSocket 中转，仅作本机识别兜底）；校验与合规 |
 
 路由新增：`/diary`（主页/时间线，`?date=yyyy-MM-dd`）、`/diary/confirm`（extra 传 ParseResult）、`/diary/text`（文字输入）。均为顶层 GoRoute，无底部标签栏。
 
@@ -180,10 +180,16 @@ ORDER BY sort_time;
 
 ## 4. API（ai-gateway）
 
-所有接口：HTTPS，Supabase 匿名登录 JWT（复用 `ensureSignedIn()`），按 auth.uid 限流（如 60 次/天 parse、3 次/天 summary）。服务端不落库用户文本，只记匿名指标（耗时、状态、prompt 版本）。
+所有接口：HTTPS，Supabase 匿名登录 JWT（复用 `ensureSignedIn()`），按 auth.uid 限流（按北京时间自然日：parse 60 次/天、summary 3 次/天、diary-asr 60 次/天，asr 以建立连接计次，单次最长 60 秒）。服务端不落库用户文本，只记匿名指标（耗时、状态、prompt 版本）。
 
-### 4.1 `POST /diary-asr`（本期不做；仅当端上识别中文口语准确率不达标时再加）
-请求：`multipart` 音频（16kHz 单声道 wav/opus，≤60s）。响应：`{ "text": "...", "duration_ms": 4200 }`。音频处理完即丢弃。
+### 4.1 `GET /diary-asr`（WebSocket，讯飞联网识别中转；本机识别兜底，D9 修订）
+- 上游：讯飞「语音听写（流式版）WebAPI」`wss://iat-api.xfyun.cn/v2/iat`（协议与签名已对照官方文档核对，见 `src/xfyun.js` 注释与签名测试向量）。
+- 握手：客户端 `GET wss://<host>/ai/diary-asr`，头 `Authorization: Bearer <Supabase JWT>`。网关依次检查：凭证是否配置（缺任一 `XFYUN_APPID/XFYUN_API_KEY/XFYUN_API_SECRET` → 503 `asr_not_configured`）、JWT（401）、限流（429），通过后 101 升级。
+- 网关 → 讯飞：用 `XFYUN_API_KEY/XFYUN_API_SECRET` 按 HMAC-SHA256 签名（`host: $host\ndate: $date\nGET /v2/iat HTTP/1.1`，date 为 RFC1123 GMT，允许 ±300s），`authorization/date/host` 作为 query；首帧带 `common.app_id=XFYUN_APPID` 与 `business{language:zh_cn, domain:iat, accent:mandarin, dwa:wpgs, eos:3000}`；音频按 1280 字节（40ms）切帧、base64，`data.status` 0/1/2。
+- 客户端 → 网关：二进制帧 = 16kHz/16bit/单声道 PCM；文本帧 `{"type":"end"}` 表示说完；直接断开 = 取消。
+- 网关 → 客户端：`{"type":"partial","text"}`（动态修正拼接后的全文）、`{"type":"final","text"}`、`{"type":"error","error":"upstream|upstream_quota|timeout|idle|no_audio"}`，随后关闭。
+- 上限：单次音频最长 60s（超出部分不转发并自动收尾）；客户端 8s 无数据结束（讯飞 10s 断开）。
+- 数据：音频只在内存里转发，不写盘；日志只记 `route, code, ms, audio_ms, status`，不记音频、文本、凭证。
 
 ### 4.2 `POST /diary-parse`
 ```json
@@ -208,6 +214,25 @@ ORDER BY sort_time;
 { "content": "今天宝宝吃了4次奶、睡了约7小时，下午有点闹，妈妈辛苦啦。", "prompt_version": "sum-v1" }
 ```
 客户端先在本地算好 stats，只发聚合数字与短标签，不发原话（数据最小化，也降低模型臆造）。
+
+### 4.4 反向代理：`/ai/` 需支持 WebSocket
+线上入口为 nginx（`https://honghong.hczhw.com/ai/` → ai-gateway `127.0.0.1:8787`）。`/diary-asr` 是 WebSocket，`location /ai/` 必须转发 Upgrade 头并放宽读超时（**本 PR 只改文档，不改线上 nginx**）：
+```nginx
+map $http_upgrade $connection_upgrade { default upgrade; '' close; }
+location /ai/ {
+    proxy_pass http://127.0.0.1:8787/;      # 末尾 / 剥离 /ai 前缀
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_set_header Host $host;
+    proxy_set_header Authorization $http_authorization;
+    proxy_read_timeout 90s;                 # 单次最长 60s 音频 + 等结果
+    proxy_send_timeout 90s;
+    proxy_buffering off;
+    client_max_body_size 16k;
+}
+```
+（Caddy 的 `reverse_proxy` 默认透传 WebSocket，无需额外配置。）
 
 ## 5. AI 流程
 
@@ -271,6 +296,27 @@ LLM 侧：使用供应商的结构化输出/JSON mode + 上述 schema；prompt �
 - **存储与不改写**：成功写 content、sourceIds、statsJson 快照、generatedAt，status=ready。之后删除/修改/新增记录**不触发重算**，小结保留原文；时间线顶部小结下注“生成于 21:03”。如果用户删了小结里提到的记录，不做任何处理（符合设计稿）。本期不提供手动“重新生成”（已确认 D8）。
 - **合规**：服务端输出过滤诊断/恐吓词与 >50 字截断；命中则用模板句兜底（“今天记录了 X 次喂奶、Y 次换尿布，辛苦啦”），模板只用统计数字，绝不虚构。
 
+### 5.5 客户端语音识别状态机（D9 修订）
+```mermaid
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> System: 按住（默认 / 本机未失败过）
+  Idle --> Cloud: 按住（本次打开内本机已失败 且 已同意联网识别）
+  System --> Processing: 松手且有文本
+  System --> SystemFailed: 不可用 / 识别出错（空结果且引擎报错）
+  System --> Retry: 空结果但引擎没报错（没听清）→ 屏 9
+  SystemFailed --> Consent: 从没问过（首次告知）
+  SystemFailed --> Idle: 已同意 → 提示“已换成联网识别，请再说一次”
+  SystemFailed --> Retry: 已拒绝 / 未配置网关 → 屏 9
+  Consent --> Idle: 同意（记住 diary_cloud_asr_consent=true）
+  Consent --> TextInput: 拒绝（记住 false）
+  Cloud --> Processing: 松手，发 end，收到 final
+  Cloud --> Retry: 网关/讯飞出错、超时、无权限 → 屏 9
+  Idle --> Idle: 上滑取消（两种识别都直接丢弃；联网时断开 WebSocket）
+  Processing --> Confirm: diary-parse
+  Retry --> TextInput: 改用文字输入
+```
+
 ## 6. 时序图
 
 ### 6.1 一句话打卡
@@ -288,7 +334,7 @@ sequenceDiagram
   UI->>V: start()（波形+计时）
   M->>UI: 松开
   V->>V: 时长<1s? 拦截
-  V-->>UI: 识别文本（端上系统识别）
+  V-->>UI: 识别文本（端上系统识别；不可用时经同意走 /diary-asr → 讯飞）
   UI->>G: POST diary-parse {text, age_in_days, now}
   G->>L: prompt + JSON schema
   L-->>G: cards JSON
@@ -333,10 +379,15 @@ sequenceDiagram
 ```
 
 ## 7. 隐私与合规
-- 音频：识别后即删，本地和云端都不保留；本期使用端上系统识别（iOS Speech / Android SpeechRecognizer，`speech_to_text` 插件），音频不出机（已确认 D9）。
+- 音频：优先端上系统识别（iOS Speech / Android SpeechRecognizer，`speech_to_text` 插件），音频不出机。本机识别不可用或出错时，**首次弹出联网识别告知**（说明录音会发送给科大讯飞识别），用户同意后才把按住说话期间的 16k PCM 经网关转发给讯飞；拒绝则退回文字输入（D9 修订）。音频只在内存中转发，本机、网关不落盘。
+- 合规清单（联网识别上线前必须完成）：
+  1. 隐私政策写明：科大讯飞股份有限公司为语音识别的**第三方处理方**，处理目的（语音转文字）、数据类型（按住说话期间的录音）、触发条件（本机识别不可用且用户同意）、境内处理、保存期限（识别完成即删除）。
+  2. 与讯飞签署数据处理协议 / 确认开放平台服务协议中的数据条款：音频与识别结果**不留存、不用于模型训练**；如默认会用于改进服务，需在控制台或商务层面关闭并留存书面确认。
+  3. App 内告知文案与隐私政策一致；用户可拒绝（退回文字输入）。后续在设置里提供“联网识别”开关以便撤回同意。
+  4. 第三方 SDK/接口清单（应用商店隐私表单）新增“讯飞语音听写 WebAPI（服务端调用）”。
 - 发给云端的只有：文本、日龄、当前时间（含时区）；小结只发聚合统计。不含小名、性别、baby_id、设备信息。
 - 服务端不持久化文本；日志只记 hash、耗时、状态。
-- 隐私政策需新增：语音识别与大模型第三方、是否出境（已确认 D11：选用国内大模型供应商，数据不出境）。
+- 隐私政策需新增：语音识别（科大讯飞，联网识别兜底时）与大模型（DeepSeek）两个第三方处理方、是否出境（已确认 D11：均为国内供应商，数据不出境）。
 - 免责声明文案按 PRD 6.3 放在小结区与确认页风险提示。
 - “参与改进”现有研究上传**不包含**日记数据；diary_cards.edited_by_user 只本地统计，若要上报准确率需单独同意（后续）。
 
@@ -351,7 +402,7 @@ sequenceDiagram
 | 日记写入 care_logs 后被家人同步 | 意外共享 | 已确认同步（与快捷记录同一事实）；情绪/其他卡不同步（D3） |
 | sleep 只有开始时间 | 首页出现进行中睡眠 | 按 D4 记为进行中会话，确认页显式展示“进行中” |
 | 合规：输出诊断性语言 | 法律/焦虑 | 双层词表 + 模板兜底 + 医学顾问审核词表 |
-| 成本与滥用 | 费用 | 匿名 JWT 限流、文本长度上限 500 字 |
+| 成本与滥用 | 费用 | 匿名 JWT 限流（parse 60、summary 3、asr 60 次/人/天）、文本长度上限 500 字、语音单次 ≤60 秒 |
 | 依赖云端（无离线） | 无网不可用 | 文字草稿保留；离线下期 |
 | 设计稿新图标为内联 SVG | 实现差异 | 实现前导出到 `app/assets/icons`（1x/2x/3x） |
 
@@ -361,7 +412,7 @@ sequenceDiagram
 |---|---|---|
 | P0 准备（2–3 天） | 国内 LLM 厂商评测（须支持 JSON schema 输出）、合规评估；搭建独立 ai-gateway 服务骨架；导出新图标 | 厂商选定、网关可访问 |
 | P1 数据层（2 天） | drift v5：babies.gender、care_logs.source/diaryCardId、3 张新表；`0004_diary.sql`（shared_babies.gender）；DiaryRepository + 时间线合并查询 | 迁移测试（v4→v5 老数据不丢）、去重单测 |
-| P2 服务端（3 天） | ai-gateway：diary-parse、diary-summary（diary-asr 本期不做，仅端上识别准确率不达标时再加）、schema 校验、风险词、限流、prompt 版本化；评测集 50–100 句真实口语 | 评测集拆分准确率、P90 延迟报告 |
+| P2 服务端（3 天） | ai-gateway：diary-parse、diary-summary（diary-asr 已于 2026-10-14 按 D9 修订补做：讯飞联网识别兜底）、schema 校验、风险词、限流、prompt 版本化；评测集 50–100 句真实口语 | 评测集拆分准确率、P90 延迟报告 |
 | P3 客户端主流程（4–5 天） | 入口卡、二级路由、性别补问、按住说话/上滑取消/文字输入、确认页（默认全选、就地编辑、全不选置灰、失败 other、风险提示）、保存事务 | 屏 1–16 对齐设计稿；widget/golden 测试 |
 | P4 时间线与编辑（2–3 天） | 合并时间线、快捷记录标签、汇总标注、历史日期切换、编辑（复用 record_editor_sheet）/二次确认删除、空状态 | 屏 17–20；不重复计数测试 |
 | P5 今日小结（2 天） | SummaryService 前台触发、幂等、空日、补生成、不改写、夜间样式 | 屏 2、21–23；并发触发只调一次测试 |
@@ -381,7 +432,7 @@ D1–D12 均已由用户确认，全部采用原推荐方案。
 | D6 | 凌晨补记“昨晚”的归属日期 | ✅ 已确认 | 00:00–04:59 说“昨晚/夜里”归前一天，确认卡上可改日期 |
 | D7 | 21:00 后一直没打开 App | ✅ 已确认 | 下次打开时补生成昨天的小结 |
 | D8 | 是否提供手动“重新生成”小结 | ✅ 已确认 | 本期不提供；已生成小结不自动、不手动改写 |
-| D9 | 语音识别方式与音频保留 | ✅ 已确认 | 端上系统识别（`speech_to_text`），音频不出机、不保留；准确率不达标时再评估云端 ASR |
+| D9 | 语音识别方式与音频保留 | ✅ 已确认（2026-10-14 修订） | 优先端上系统识别（`speech_to_text`）；本机没有识别服务或识别出错时，经用户首次告知并同意后，走讯飞「语音听写（流式版）WebAPI」联网识别（经网关 `/diary-asr` 中转）。音频只在内存中转发，本机、网关、讯飞均不保留，不用于训练；用户拒绝则退回文字输入 |
 | D10 | AI 网关部署 | ✅ 已确认 | 独立轻量服务（Deno/Node）挂 Caddy 后，不启用 Supabase functions，校验 Supabase JWT |
 | D11 | LLM 供应商 | ✅ 已确认 | 国内供应商，数据不出境，须支持 JSON schema 输出；具体厂商在 P0 评测后选定 |
 | D12 | 小结时间是否可自定义 | ✅ 已确认 | 本期固定 21:00，不提供设置项 |

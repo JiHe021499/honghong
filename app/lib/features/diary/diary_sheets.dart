@@ -97,3 +97,50 @@ Future<bool?> showVoiceErrorSheet(BuildContext context) => showModalBottomSheet<
         );
       },
     );
+
+/// 联网识别告知（首次需要走讯飞时弹一次）。返回 true=同意，false=不同意（退回文字输入），null=关掉没选。
+Future<bool?> showCloudAsrConsentSheet(BuildContext context) => showModalBottomSheet<bool>(
+      context: context,
+      useRootNavigator: true,
+      useSafeArea: true,
+      isDismissible: false,
+      isScrollControlled: true,
+      builder: (ctx) {
+        final c = ctx.hh;
+        return SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(22, 12, 22, 24),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const SheetGrab(),
+            const HhIcon(AppIcon.voice, size: 52),
+            const SizedBox(height: 8),
+            Text('换成联网识别？', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: c.ink)),
+            const SizedBox(height: 6),
+            Text('这台手机自带的语音识别暂时用不了。同意后，按住说话时的录音会加密发送给科大讯飞，只用来转成文字。',
+                textAlign: TextAlign.center, style: TextStyle(fontSize: 14, height: 1.5, color: c.sub)),
+            const SizedBox(height: 12),
+            Container(
+              key: const Key('cloud-asr-points'),
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(color: c.card, borderRadius: BorderRadius.circular(16), border: Border.all(color: c.line)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                for (final t in const ['录音识别完就丢弃，哄哄和讯飞都不保存', '不会用于训练任何模型', '只发送你按住说话的那几秒，每次最长 1 分钟'])
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('· ', style: TextStyle(fontSize: 13, color: c.peach2, fontWeight: FontWeight.w700)),
+                      Expanded(child: Text(t, style: TextStyle(fontSize: 13, height: 1.5, color: c.ink))),
+                    ]),
+                  ),
+              ]),
+            ),
+            const SizedBox(height: 18),
+            HhButton(key: const Key('cloud-asr-agree'), label: '同意，用联网识别', onPressed: () => Navigator.pop(ctx, true)),
+            const SizedBox(height: 10),
+            HhButton(key: const Key('cloud-asr-decline'), label: '不用了，打字记录', primary: false, onPressed: () => Navigator.pop(ctx, false)),
+            const SizedBox(height: 10),
+            Text('详见隐私政策中的“第三方处理方”。', style: TextStyle(fontSize: 12, color: c.sub)),
+          ]),
+        );
+      },
+    );
