@@ -24,12 +24,14 @@
 | 场景 | versionName | versionCode | 渠道 |
 |---|---|---|---|
 | 推送 `v*` 标签 | 标签去掉 `v`，例如 `v0.2.0` → `0.2.0` | `github.run_number`（Android 工作流的运行序号） | `stable`（正式版） |
-| 在 master 上手动触发 | `<pubspec 主.次>.<run_number>`，例如 `0.1.42` | 同上 | `dev`（预发布） |
+| 在 master 上手动触发 | `<pubspec 主.次>.<run_number>-dev`，例如 `0.1.42-dev` | 同上 | `dev`（预发布） |
 | push 或 PR（不发布） | `<主.次>.<run_number>-ci`，只用于构建产物 | 同上 | — |
 
 - 主.次取自 `app/pubspec.yaml` 的 `version:`（目前是 `0.1.0+1`，**只用前两段**，`+1` 和第三段不起作用）。要升到 0.2.x，就把 pubspec 改成 `0.2.0+1`。
-- 打标签时，如果标签的主.次和 pubspec 不一致，CI 只给出警告，**仍然按标签发布**。
-- versionCode 只增不减：同一工作流的 run_number 单调递增，不发布的运行也会消耗序号。所以 versionCode 会跳号，但新包一定能覆盖安装旧包。
+- 打标签时，标签的主.次必须和 pubspec 一致（例如 pubspec 是 `0.2.0+1`，就只能打 `v0.2.x`），否则 CI **直接报错、终止发布**。
+- versionCode 只增不减：同一工作流的 run_number 单调递增。不发布的运行（push 和 PR 的构建检查）也会消耗序号，所以发布出去的 versionCode **会跳号，这一点已确认可以接受**（2026-10-14 产品决定），新包一定能覆盖安装旧包。
+- 带 `-dev` 后缀不影响更新判断：App 只用 versionCode（整数）比较新旧，versionName 只用于显示和安装包文件名；releases 仓库把 versionName 原样用在 tag（`v0.1.42-dev`）、Release 标题和下载地址里，这些都允许 `-`。dev 版和正式版因此不会再撞名。
+- **iOS 版本号暂不统一**（产品决定）：iOS 仍然用它自己的 `0.1.<run_number>`，和 Android 对不上，也不响应标签。等上 TestFlight 时再统一。
 - 构建命令显式传 `--build-name/--build-number`，App 内 `PackageInfo.buildNumber` 就是 versionCode，更新检查用它比较。
 
 ## 2. 什么会触发构建
@@ -153,8 +155,8 @@ APK 不能降级安装（versionCode 只能增），所以**回滚＝用旧代�
 ## 10. 发现的不一致 / 待改进
 
 1. **App 不区分渠道**：`UpdateService.check()` 调 `ReleaseInfo.parse()` 时没传 `channel`，用的是顶层（最近一次发布，不论 dev/stable）。所以「正式版用户只收正式版」目前不成立，`channels` 字段没被使用。需要在 App 里加渠道设置（或按当前包的渠道）。
-2. **标签版本号可能和 dev 版本撞名**（dev 现在只在手动触发时发布，但序号仍是 `0.1.<run_number>`）：dev 版本名是 `0.1.<run_number>`，如果打 `v0.1.20` 而 dev 也曾发过 `0.1.20`，`publish.yml` 会**删掉同名 Release 重建**，覆盖掉 dev 的包。正式版请用不会出现在 dev 序列里的号（如升次版本 `0.2.0`），或以后改为 dev 带后缀。
-3. **iOS 和 Android 版本号不一致**：两个工作流各自的 run_number 不同，同一提交的 iOS `0.1.x` 和 Android `0.1.y` 对不上；iOS 也不响应 `v*` 标签。上 TestFlight 前应统一（例如都用 commit 计数或共享的版本来源）。
+2. ~~标签版本号可能和 dev 版本撞名~~：已解决，dev 版现在带 `-dev` 后缀。以下为历史说明：dev 版本名是 `0.1.<run_number>`，如果打 `v0.1.20` 而 dev 也曾发过 `0.1.20`，`publish.yml` 会**删掉同名 Release 重建**，覆盖掉 dev 的包。正式版请用不会出现在 dev 序列里的号（如升次版本 `0.2.0`），或以后改为 dev 带后缀。
+3. **iOS 和 Android 版本号不一致**（已确认等上 TestFlight 时再统一）：两个工作流各自的 run_number 不同，同一提交的 iOS `0.1.x` 和 Android `0.1.y` 对不上；iOS 也不响应 `v*` 标签。上 TestFlight 前应统一（例如都用 commit 计数或共享的版本来源）。
 4. **pubspec 的 `+build` 和第三段没用**，容易误导；可以在 pubspec 注释里写明。
 5. **强制更新只维持一版**：下一次普通发布 `minSupportedVersionCode` 归 0，跳过强制版本、直接从更老版本升到更新版本的用户不会被强制。若需要「低于某版本必须升级」，应把 minSupportedVersionCode 做成持续继承的最大值。
 6. **更新日志只取 `app/` 目录的提交**（`git log … -- .` 在 app 目录执行），只改 CI/文档的提交不会出现在日志里（这是预期，但标记 `[强制更新]` 也必须写在动了 `app/` 的提交里才生效）。

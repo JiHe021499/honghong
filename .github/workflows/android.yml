@@ -4,7 +4,8 @@ name: Android APK
 # - push / PR 到 master：只跑 analyze + test 并构建一个【未用发布密钥签名】的 APK 作为构建产物（debug 签名，
 #   不能覆盖安装正式版），不碰任何发布密钥，不推送到 honghong-releases。
 # - 推送 v* 标签：签名并发布 stable 版（versionName = 标签去掉 v）。
-# - 手动 workflow_dispatch（只允许在 master 上）：签名并发布 dev 版（versionName = <pubspec 主.次>.<run_number>）。
+# - 手动 workflow_dispatch（只允许在 master 上）：签名并发布 dev 版（versionName = <pubspec 主.次>.<run_number>-dev）。
+# - 标签的主.次必须与 app/pubspec.yaml 一致，否则直接报错、不发布。
 # 版本号规则：versionCode = github.run_number（单调递增）。
 # 发布时把 APK 和元数据推到公开仓库 honghong-releases 的 upload/<版本> 分支，由那边的工作流创建 Release 并更新 version.json。
 # 提交信息里带 [强制更新] 或 [force] 时，这个版本会要求所有旧版本必须更新。
@@ -53,7 +54,7 @@ jobs:
             base=$(grep -E '^version:' pubspec.yaml | sed -E 's/version: *([0-9]+)\.([0-9]+).*/\1.\2/')
             case "${GITHUB_REF_NAME#v}" in
               "$base".*) ;;
-              *) echo "::warning::标签 $GITHUB_REF_NAME 与 pubspec 的主.次版本 $base 不一致（仍按标签发布）" ;;
+              *) echo "::error::标签 $GITHUB_REF_NAME 与 pubspec 的主.次版本 $base 不一致，终止发布。请先改 app/pubspec.yaml 的 version，或改用 v$base.x 标签"; exit 1 ;;
             esac
           fi
 
@@ -65,7 +66,7 @@ jobs:
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             name="${GITHUB_REF_NAME#v}"; channel=stable
           elif [ "$PUBLISH" = true ]; then
-            name="$base.$code"; channel=dev
+            name="$base.$code-dev"; channel=dev
           else
             name="$base.$code-ci"; channel=ci
           fi
