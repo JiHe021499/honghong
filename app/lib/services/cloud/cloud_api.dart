@@ -41,6 +41,10 @@ abstract class CloudApi {
   Future<void> upsertResearchEvent(Map<String, dynamic> row);
   Future<void> upsertResearchFeedback(Map<String, dynamic> row);
   Future<void> deleteMyResearchData();
+
+  // 模型下发（阶段 3）：灰度内的最新版本行 {version, storage_path, sha256, meta}，没有返回 null
+  Future<Map<String, dynamic>?> eligibleModel(String kind);
+  Future<Uint8List> downloadModel(String storagePath);
 }
 
 /// 友好的错误（直接显示给用户）

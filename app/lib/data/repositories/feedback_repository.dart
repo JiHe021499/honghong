@@ -41,6 +41,26 @@ class FeedbackRepository {
     return counts;
   }
 
+  /// 带反馈的历史预测（端上个性化用）：每个事件取最后一次确定的反馈
+  Future<List<(Prediction, CryCause)>> labelledPredictions(String babyId) async {
+    final q = _db.select(_db.feedbacks).join([
+      innerJoin(_db.cryEvents, _db.cryEvents.id.equalsExp(_db.feedbacks.cryEventId)),
+    ])
+      ..where(_db.cryEvents.babyId.equals(babyId) &
+          _db.cryEvents.deleted.not() &
+          _db.feedbacks.resolvedCause.isNotValue('unknown'))
+      ..orderBy([OrderingTerm.asc(_db.feedbacks.createdAt)]);
+    final byEvent = <String, (Prediction, CryCause)>{};
+    for (final row in await q.get()) {
+      final f = row.readTable(_db.feedbacks);
+      final e = row.readTable(_db.cryEvents);
+      try {
+        byEvent[e.id] = (Prediction.decode(e.predictionJson), CryCause.values.byName(f.resolvedCause));
+      } catch (_) {}
+    }
+    return byEvent.values.toList();
+  }
+
   /// 第一名与反馈一致的比例（核心指标）
   Future<({int total, int hits})> top1Agreement(String babyId) async {
     final q = _db.select(_db.feedbacks).join([

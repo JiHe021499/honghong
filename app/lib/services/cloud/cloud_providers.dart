@@ -12,6 +12,7 @@ import '../../features/update/update_providers.dart';
 import 'cloud_api.dart';
 import 'family_sync.dart';
 import 'research_upload.dart';
+import '../model/model_providers.dart';
 import 'supabase_cloud_api.dart';
 
 /// 未配置云端（没有 dart-define）时为 null，App 全部离线运行。测试里可注入假实现。
@@ -169,6 +170,10 @@ class SyncCoordinator with WidgetsBindingObserver {
         error ??= '上传失败，稍后自动重试';
       }
     }
+    // 模型更新（最多 6 小时查一次；模型很小，不限 Wi-Fi）。失败不算同步错误
+    try {
+      await checkModelUpdate(_ref);
+    } catch (_) {}
     status.put(SyncStatus(
         lastFamilySync: _ref.read(familySyncProvider)?.lastSync,
         error: error,

@@ -6,7 +6,7 @@
 #   2. 用官方脚本生成全新的 JWT_SECRET、anon / service_role key、ES256 密钥对和其他密钥（旧密钥一律作废）
 #   3. 写入哄哄需要的配置：公网地址、开启匿名登录、关闭邮箱/手机注册、随机数据库和 Studio 密码
 #   4. 叠加 docker-compose.override.yml（关 realtime/functions/supavisor，端口只绑 127.0.0.1）并启动
-#   5. 执行 migrations/0001_init.sql + 0002_family.sql，刷新 PostgREST 缓存
+#   5. 执行 migrations/0001_init.sql + 0002_family.sql + 0003_models.sql，刷新 PostgREST 缓存
 #   6. 冒烟测试：经公网地址匿名注册一个用户
 #   7. 把服务器 .env 拷一份到本机 $SECRETS_OUT（权限 600，不进仓库）
 #   8. 设置 GitHub 仓库 secret：SUPABASE_URL、SUPABASE_ANON_KEY（只给 anon key）
@@ -86,7 +86,7 @@ done
 sleep 15  # 等 auth / storage 完成各自的内部迁移（storage.buckets 由 storage 服务创建）
 
 echo "== 5. 执行迁移"
-for f in "$mig/0001_init.sql" "$mig/0002_family.sql"; do
+for f in "$mig/0001_init.sql" "$mig/0002_family.sql" "$mig/0003_models.sql"; do
   echo "  $(basename "$f")"
   $SSH "$HOST" "docker exec -i supabase-db psql -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -q" < "$f"
 done

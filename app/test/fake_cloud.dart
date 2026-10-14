@@ -11,6 +11,8 @@ class FakeServer {
   final cries = <String, Map<String, dynamic>>{};
   final research = <String, Map<String, dynamic>>{};
   final clips = <String, Uint8List>{};
+  final models = <String, Uint8List>{}; // storage path -> bytes
+  Map<String, dynamic>? eligible; // eligible_model('classifier') 的返回
   int _seq = 0, _n = 0;
   String _stamp() => (++_seq).toString().padLeft(12, '0');
 
@@ -151,5 +153,19 @@ class FakeCloud implements CloudApi {
     _net();
     s.research.clear();
     s.clips.removeWhere((k, _) => k.startsWith('$uid/'));
+  }
+
+  @override
+  Future<Map<String, dynamic>?> eligibleModel(String kind) async {
+    _net();
+    return s.eligible;
+  }
+
+  @override
+  Future<Uint8List> downloadModel(String storagePath) async {
+    _net();
+    final b = s.models[storagePath];
+    if (b == null) throw CloudException('not found');
+    return b;
   }
 }

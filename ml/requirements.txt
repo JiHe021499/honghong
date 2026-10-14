@@ -1,7 +1,8 @@
-numpy>=1.26
-pandas>=2.2
-librosa>=0.10
-soundfile>=0.12
-tensorflow>=2.16
-tensorflow-hub>=0.16
-scikit-learn>=1.5
+# Python 3.12；训练机 CPU 即可（donateacry 全量特征提取 + 训练约 6 分钟）
+tensorflow-cpu==2.19.*
+tensorflow-hub
+setuptools<70   # tensorflow-hub 需要 pkg_resources
+librosa
+soundfile
+scikit-learn
+numpy

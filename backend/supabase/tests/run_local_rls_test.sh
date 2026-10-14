@@ -11,4 +11,5 @@ q() { psql -h "$d" -p $port -U postgres -d postgres -v ON_ERROR_STOP=1 -q "$@"; 
 q -f "$here/local_stub.sql"
 q -f "$here/../migrations/0001_init.sql"
 q -f "$here/../migrations/0002_family.sql"
+q -f "$here/../migrations/0003_models.sql"
 q -f "$here/family_rls_test.sql"

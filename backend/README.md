@@ -51,3 +51,8 @@ api.example.com {
 - 启停：`cd /opt/honghong-supabase && docker compose up -d` / `docker compose ps`
 - 备份：cron 每天 03:30（服务器时间 UTC）运行 `/opt/honghong-supabase/backup.sh`，pg_dump + storage 打包到 `/opt/honghong-backups`，保留 7 天（同机备份，建议再同步到异地）
 - App 端配置：`SUPABASE_URL=https://honghong.hczhw.com` + anon key（anon key 可放客户端；service_role key 绝不能进 App）
+
+## 模型下发（第三阶段）
+
+- 迁移 `0003_models.sql`（已在 nc_am 执行）：`model_versions` 增加 `meta`/`size_bytes`/`notes`，`meta` 的 sha256/version 必须与行一致。
+- 发布：`ml/src/publish_model.py --env <secrets> --version cls-N --rollout 10`（service_role 只在训练机）。回滚：把 rollout_percent 设 0 或发布更高版本。

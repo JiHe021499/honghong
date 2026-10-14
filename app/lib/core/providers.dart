@@ -9,7 +9,10 @@ import '../domain/context_builder.dart';
 import '../domain/models/care_log_type.dart';
 import '../domain/models/cry_cause.dart';
 import '../domain/predictor/cry_predictor.dart';
+import '../domain/predictor/model_predictor.dart';
+import '../domain/predictor/personalization.dart';
 import '../domain/predictor/rule_based_predictor.dart';
+import '../services/model/model_providers.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) {
   final db = AppDatabase();
@@ -68,12 +71,24 @@ Map<CryCause, double> priorsFromCounts(Map<String, int> counts) {
   };
 }
 
-/// 当前使用的猜原因实现。阶段 3 在这里换成 TFLite 版。
+/// 当前使用的猜原因实现：有可用分类模型时用 ModelPredictor（音频模型 + 上下文规则 + 个性化），
+/// 否则用 RuleBasedPredictor。反馈后 invalidate 以更新先验和个性化。
 final cryPredictorProvider = FutureProvider<CryPredictor>((ref) async {
   final baby = await ref.watch(currentBabyProvider.future);
-  final counts =
-      await ref.watch(feedbackRepositoryProvider).causeCounts(baby.id);
-  return RuleBasedPredictor(priors: priorsFromCounts(counts));
+  final fb = ref.watch(feedbackRepositoryProvider);
+  final rule = RuleBasedPredictor(priors: priorsFromCounts(await fb.causeCounts(baby.id)));
+  final model = await ref.watch(activeModelProvider.future);
+  if (model == null) return rule;
+  return ModelPredictor(
+    rule: rule,
+    head: model.head,
+    meta: model.meta,
+    personal: Personalization.fromFeedback(await fb.labelledPredictions(baby.id)),
+    onFailure: (_) async {
+      await ref.read(modelManagerProvider).reportFailure(model.meta.version);
+      ref.invalidate(activeModelProvider);
+    },
+  );
 });
 
 /// 一次哭声流程：生成上下文 → 预测 → 存 CryEvent，返回事件 id
@@ -97,6 +112,14 @@ class CryFlow {
       birthDate: baby.birthDate,
       latest: logs.map((k, v) => MapEntry(k, LastLog(v.startedAt, v.endedAt))),
     );
+    if (audio.embedding == null && audioPath != null) {
+      try {
+        final emb = await _ref.read(cryEmbedderProvider.future);
+        if (emb != null) audio = await emb.embedWav(audioPath);
+      } catch (_) {
+        // 特征提取失败：只用记录推断
+      }
+    }
     final predictor = await _ref.read(cryPredictorProvider.future);
     final prediction = await predictor.predict(audio, ctx);
     return _ref.read(cryEventRepositoryProvider).save(

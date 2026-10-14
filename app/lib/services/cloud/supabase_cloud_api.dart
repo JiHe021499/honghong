@@ -155,4 +155,26 @@ class SupabaseCloudApi implements CloudApi {
     }
     await _rpc<dynamic>('delete_my_research_data');
   }
+
+  @override
+  Future<Map<String, dynamic>?> eligibleModel(String kind) async {
+    await ensureSignedIn();
+    try {
+      final r = await _c.rpc('eligible_model', params: {'p_kind': kind});
+      final rows = (r as List).cast<Map<String, dynamic>>();
+      return rows.isEmpty ? null : rows.first;
+    } on PostgrestException catch (e) {
+      throw CloudException('服务器出错：${e.message}');
+    }
+  }
+
+  @override
+  Future<Uint8List> downloadModel(String storagePath) async {
+    await ensureSignedIn();
+    try {
+      return await _c.storage.from('models').download(storagePath.replaceFirst(RegExp(r'^models/'), ''));
+    } on StorageException catch (e) {
+      throw CloudException('下载模型失败：${e.message}');
+    }
+  }
 }

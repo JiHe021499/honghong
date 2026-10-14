@@ -206,7 +206,9 @@ flowchart LR
   H --> I[灰度 rollout_percent]
 ```
 
-- 训练代码在 `ml/src/`，本地 CPU 即可，必要时租 GPU。
+- 训练代码在 `ml/src/`，本地 CPU 即可，必要时租 GPU。详细说明、数据许可和 v1 评估见 `ml/README.md`。
+- 已实现（v1 / cls-1）：音频 embedding 用 App 内置的 `yamnet_embed.tflite`（与训练同一文件）；公开数据 donateacry 上分组交叉验证不优于随机，所以 cls-1 以权重 0 影子运行，排序仍由规则决定，模型输出记录在 `prediction.components` 供端上个性化和下一版评估。
+- 迁移 `0003_models.sql`：`model_versions` 增加 `meta jsonb`（类别、特征规格、融合参数、自检样本、评估）和 `size_bytes`、`notes`；文件在 `models/classifier/{version}.tflite`。
 - 端上：`TfliteCryPredictor` = YAMNet embedding + 上下文 → 分类模型；个性化两种方式：①按宝宝历史反馈调整各原因先验（简单，先做）；②在端上只微调输出层（head）。
 - 模型下发：App 启动时调用 `eligible_model('classifier')`，版本更新则下载、校验 sha256、写入 `ModelVersions` 并切换；失败回退到上一版本或规则版。
 - 灰度：按设备 id 哈希分桶，对比新旧版本 top-1 一致率再全量。
