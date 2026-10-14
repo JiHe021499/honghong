@@ -4,7 +4,7 @@
 
 ## 状态
 - ✅ 评测脚本：`backend/ai-gateway/eval/run.js`（OpenAI 兼容接口，`response_format: json_schema strict`），8 句种子用例。
-- ⛔ **未实测**：仓库和云电脑里没有任何厂商的 API Key，不能代为注册/付费，结果表为空。
+- ✅ DeepSeek 已实测（用户只选了这一家）：不支持 json_schema strict，降级为 `LLM_JSON_MODE=json_object` 后 8/8 通过。其余厂商未测。
 - ⛔ **厂商未选定**：需要用户拍板（见下）。
 
 ## 候选（能力均需以实测为准，下表“JSON schema”列待填）
@@ -13,7 +13,7 @@
 | 阿里云百炼（通义千问） | qwen-plus / qwen-turbo | 待测 | 待测 | | | | | |
 | 火山方舟（豆包） | doubao 系列 | 待测 | 待测 | | | | | |
 | 智谱（GLM） | glm-4 系列 | 待测 | 待测 | | | | | |
-| DeepSeek | deepseek-chat | 待测 | 待测 | | | | | 若只支持 json_object，需服务端强校验兜底 |
+| DeepSeek | deepseek-chat | ✅ | ❌ 仅 json_object（json_schema 返回 HTTP 400 “This response_format type is unavailable now”） | 8/8（json_object + 提示词内嵌 schema + 服务端 validateParse） | 1.00 | 336–339ms / 452–697ms（2 轮） | | 2026-10-14 实测，仅 8 句种子用例；需服务端强校验兜底，P2 用 50–100 句真实口语复测 |
 | 月之暗面（Kimi） | moonshot 系列 | 待测 | 待测 | | | | | |
 
 判定标准：schema 通过率 100%（strict 失败则淘汰或降级为 json_object + 服务端校验）、分类召回 ≥ 0.9、P90 ≤ 3s、价格。
