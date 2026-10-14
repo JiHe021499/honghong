@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/db/app_database.dart';
 import '../data/repositories/baby_repository.dart';
 import '../data/repositories/care_log_repository.dart';
+import '../data/repositories/diary_repository.dart';
 import '../data/repositories/cry_event_repository.dart';
 import '../data/repositories/feedback_repository.dart';
 import '../domain/context_builder.dart';
@@ -25,6 +26,8 @@ final babyRepositoryProvider =
     Provider((ref) => BabyRepository(ref.watch(databaseProvider)));
 final careLogRepositoryProvider =
     Provider((ref) => CareLogRepository(ref.watch(databaseProvider)));
+final diaryRepositoryProvider =
+    Provider((ref) => DiaryRepository(ref.watch(databaseProvider)));
 final cryEventRepositoryProvider =
     Provider((ref) => CryEventRepository(ref.watch(databaseProvider)));
 final feedbackRepositoryProvider =

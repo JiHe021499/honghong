@@ -14,7 +14,7 @@ import 'package:intl/date_symbol_data_local.dart';
 List<CareLog> sampleLogs(DateTime day) {
   DateTime t(int h, int m) => DateTime(day.year, day.month, day.day, h, m);
   CareLog l(String id, String type, DateTime s, DateTime? e, CareDetail? d) => CareLog(
-      id: id, babyId: 'b', type: type, startedAt: s, endedAt: e, detail: d?.encode(), deleted: false, dirty: false, createdAt: s);
+      id: id, babyId: 'b', type: type, startedAt: s, endedAt: e, detail: d?.encode(), deleted: false, dirty: false, createdAt: s, source: 'quick');
   return [
     l('1', 'sleep', t(7, 27), null, null),
     l('2', 'feed', t(7, 6), t(7, 16), const CareDetail(method: FeedMethod.breast, side: FeedSide.left)),

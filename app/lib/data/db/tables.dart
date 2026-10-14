@@ -8,6 +8,8 @@ class Babies extends Table {
   // 家庭同步（schema v3）
   DateTimeColumn get updatedAt => dateTime().nullable()();
   BoolColumn get dirty => boolean().withDefault(const Constant(false))();
+  /// 性别：'boy' | 'girl' | null（未填/跳过，D5 可跳过）（schema v5）。不发给 AI。
+  TextColumn get gender => text().nullable()();
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -27,6 +29,10 @@ class CareLogs extends Table {
   DateTimeColumn get updatedAt => dateTime().nullable()();
   BoolColumn get deleted => boolean().withDefault(const Constant(false))();
   BoolColumn get dirty => boolean().withDefault(const Constant(true))();
+  /// 来源：quick（首页快捷记录）| diary（妈咪日记）| backfill（补记）（schema v5）
+  TextColumn get source => text().withDefault(const Constant('quick'))();
+  /// 来自日记时指向 diary_cards.id（schema v5）
+  TextColumn get diaryCardId => text().nullable()();
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -73,4 +79,67 @@ class ModelVersions extends Table {
   DateTimeColumn get installedAt => dateTime().withDefault(currentDateAndTime)();
   @override
   Set<Column> get primaryKey => {version};
+}
+
+// ───────── 妈咪日记（schema v5，只存本地，不同步） ─────────
+
+/// 一次输入（一句话）
+class DiaryInputs extends Table {
+  TextColumn get id => text()();
+  TextColumn get babyId => text().references(Babies, #id)();
+  TextColumn get inputType => text()(); // voice|text
+  TextColumn get rawText => text()();
+  IntColumn get ageInDays => integer()();
+  TextColumn get parseStatus => text()(); // ok|partial|failed
+  TextColumn get promptVersion => text()();
+  TextColumn get modelVersion => text().nullable()();
+  IntColumn get latencyMs => integer().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  BoolColumn get deleted => boolean().withDefault(const Constant(false))();
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// 日记卡片：所有已保存的 AI 卡片都有一行（含已写入 care_logs 的，作溯源）
+class DiaryCards extends Table {
+  TextColumn get id => text()();
+  TextColumn get inputId => text().nullable().references(DiaryInputs, #id)();
+  TextColumn get babyId => text().references(Babies, #id)();
+  TextColumn get category => text()(); // feeding|sleep|diaper|mood|other
+  TextColumn get kind => text()(); // event|aggregate
+  TextColumn get careLogId => text().nullable()();
+  DateTimeColumn get eventTime => dateTime().nullable()();
+  TextColumn get timePeriod => text().nullable()(); // morning|afternoon|evening|night|all_day
+  DateTimeColumn get sortTime => dateTime()();
+  DateTimeColumn get diaryDate => dateTime()(); // 归属日期（本地日 00:00）
+  TextColumn get attributes => text()(); // JSON
+  TextColumn get intensity => text().nullable()();
+  TextColumn get note => text().nullable()();
+  RealColumn get confidence => real().nullable()();
+  BoolColumn get editedByUser => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+  BoolColumn get deleted => boolean().withDefault(const Constant(false))();
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// 今日小结：每宝宝每日一条
+class DailySummaries extends Table {
+  TextColumn get id => text()();
+  TextColumn get babyId => text().references(Babies, #id)();
+  DateTimeColumn get date => dateTime()(); // 本地日 00:00
+  TextColumn get status => text()(); // pending|ready|empty|failed
+  TextColumn get content => text().nullable()();
+  TextColumn get sourceIds => text()(); // JSON
+  TextColumn get statsJson => text()();
+  TextColumn get promptVersion => text()();
+  IntColumn get attempts => integer().withDefault(const Constant(0))();
+  DateTimeColumn get generatedAt => dateTime().nullable()();
+  @override
+  Set<Column> get primaryKey => {id};
+  @override
+  List<Set<Column>> get uniqueKeys => [
+        {babyId, date}
+      ];
 }

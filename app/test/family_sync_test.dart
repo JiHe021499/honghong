@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:honghong/data/db/app_database.dart';
 import 'package:honghong/data/repositories/baby_repository.dart';
@@ -102,6 +103,62 @@ void main() {
     await b.sync();
     expect(await CareLogRepository(dbB).byId(id), isNull);
     expect(await CareLogRepository(dbB).all(), isEmpty);
+  });
+
+  test('宝宝性别随家庭同步（妈咪日记 v5）；服务端没有 gender 列时保留本地值', () async {
+    final baby = await BabyRepository(dbA).ensureDefault();
+    await a.create(name: '爸爸', avatar: 'dad');
+    await b.join(code: server.invites.keys.single, name: '妈妈', avatar: 'mom');
+    await BabyRepository(dbA).updateGender(baby.id, 'girl');
+    // 本地时间按秒存储，人为推后避免与建家庭时的服务端时间戳同秒
+    await (dbA.update(dbA.babies)..where((x) => x.id.equals(baby.id)))
+        .write(BabiesCompanion(updatedAt: Value(DateTime.now().add(const Duration(seconds: 2)))));
+    await a.sync();
+    await b.sync();
+    expect((await dbB.select(dbB.babies).getSingle()).gender, 'girl');
+
+    // 模拟老服务端：拉取结果里没有 gender 键
+    final fid = server.babies.keys.single;
+    server.babies[fid] = Map.of(server.babies[fid]!)
+      ..remove('gender')
+      ..['nickname'] = '糖糖'
+      ..['updated_at'] = DateTime.now().add(const Duration(minutes: 1)).toUtc().toIso8601String();
+    await b.sync();
+    final bb = await dbB.select(dbB.babies).getSingle();
+    expect(bb.nickname, '糖糖');
+    expect(bb.gender, 'girl');
+  });
+
+  test('云端已有性别后可以改成另一个性别，家人收到新值', () async {
+    final baby = await BabyRepository(dbA).ensureDefault();
+    await a.create(name: '爸爸', avatar: 'dad');
+    await b.join(code: server.invites.keys.single, name: '妈妈', avatar: 'mom');
+    Future<void> setGender(String g, int sec) async {
+      await BabyRepository(dbA).updateGender(baby.id, g);
+      await (dbA.update(dbA.babies)..where((x) => x.id.equals(baby.id)))
+          .write(BabiesCompanion(updatedAt: Value(DateTime.now().add(Duration(seconds: sec)))));
+      await a.sync();
+      await b.sync();
+    }
+
+    await setGender('girl', 2);
+    expect((await dbB.select(dbB.babies).getSingle()).gender, 'girl');
+    await setGender('boy', 4);
+    expect(server.babies.values.single['gender'], 'boy');
+    expect((await dbB.select(dbB.babies).getSingle()).gender, 'boy');
+  });
+
+  test('日记来源的护理记录同步给家人（D3），source 不上云，家人那边记为默认 quick', () async {
+    await BabyRepository(dbA).ensureDefault();
+    await a.create(name: '爸爸', avatar: 'dad');
+    await b.join(code: server.invites.keys.single, name: '妈妈', avatar: 'mom');
+    final baby = await dbA.select(dbA.babies).getSingle();
+    final id = await CareLogRepository(dbA).add(baby.id, CareLogType.diaper, at: DateTime(2026, 10, 13, 9), source: 'diary');
+    await a.sync();
+    await b.sync();
+    final got = (await CareLogRepository(dbB).byId(id))!;
+    expect(got.type, 'diaper');
+    expect(got.source, 'quick');
   });
 
   test('两台手机同时开始喂奶：后开始的保留，先开始的自动结束', () async {

@@ -90,6 +90,7 @@ class SupabaseCloudApi implements CloudApi {
         'p_nickname': b['nickname'],
         'p_birth_date': b['birth_date'],
         'p_updated_at': b['updated_at'],
+        'p_gender': b['gender'],
       });
 
   @override
