@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -219,6 +220,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 sub: 'App 在前台时听到哭声自动开始录音（本地识别，不上传）',
                 trailing: Switch(value: auto, onChanged: (v) => ref.read(autoListenProvider.notifier).set(v)),
               ),
+              if (Platform.isIOS)
+                tile(
+                  '小组件、锁屏和控制中心',
+                  key: const Key('ios_widgets'),
+                  icon: AppIcon.phone,
+                  sub: '主屏幕/锁屏长按 → 编辑 → 添加小组件 → 哄哄；控制中心可添加「喂奶」「睡觉」「换尿布」（iOS 18）。进行中的计时会显示在灵动岛和锁屏上',
+                )
+              else
               tile(
                 '锁屏快捷记录',
                 key: const Key('lockscreen'),

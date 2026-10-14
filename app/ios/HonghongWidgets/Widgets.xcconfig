@@ -1,0 +1,2 @@
+// 小组件扩展：取 Flutter 的版本号，保证和 App 一致
+#include "../Flutter/Generated.xcconfig"

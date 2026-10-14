@@ -10,12 +10,13 @@ import '../../data/repositories/baby_repository.dart';
 import '../../data/repositories/care_log_repository.dart';
 import '../../domain/models/care_log_type.dart';
 import 'lockscreen_notification.dart';
+import 'ios_quick.dart';
 import 'quick_actions.dart';
 
 /// 所有"快捷入口"（锁屏通知、桌面小部件、下拉快捷开关）共用的发布逻辑。
 /// 小部件和快捷开关由原生代码（MainActivity 同包的 Kotlin）读 home_widget 的 SharedPreferences 绘制。
 class QuickSurfaces {
-  static bool get supported => !kIsWeb && Platform.isAndroid && !Platform.environment.containsKey('FLUTTER_TEST');
+  static bool get supported => !kIsWeb && (Platform.isAndroid || Platform.isIOS) && !Platform.environment.containsKey('FLUTTER_TEST');
 
   static const widgetProviders = ['com.honghong.honghong.QuickWidgetProvider', 'com.honghong.honghong.QuickWidgetSmallProvider'];
 
@@ -23,6 +24,7 @@ class QuickSurfaces {
   static Future<void> publish(AppDatabase db, {String? done, SharedPreferences? prefs}) async {
     if (!supported) return;
     final data = await loadWidgetData(db, done: done);
+    if (Platform.isIOS) return IosQuick.publish(db, data); // iOS：WidgetKit 小组件 + 实时活动，没有常驻通知
     for (final e in data.entries) {
       await HomeWidget.saveWidgetData(e.key, e.value);
     }

@@ -4,12 +4,27 @@
 <dict>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>哄哄需要使用麦克风录下宝宝的哭声，用来判断宝宝为什么哭。录音默认只保存在本机。</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.honghong.honghong</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>honghong</string>
+			</array>
+		</dict>
+	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Honghong</string>
+	<string>哄哄</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

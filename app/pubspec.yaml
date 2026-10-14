@@ -74,6 +74,9 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.4
 
 flutter:
+  config:
+    # iOS 用 CocoaPods（permission_handler 等插件需要 Podfile 里的编译宏）
+    enable-swift-package-manager: false
   uses-material-design: true
   assets:
     - assets/models/

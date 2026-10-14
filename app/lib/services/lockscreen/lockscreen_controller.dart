@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:async';
 import 'dart:isolate';
 
@@ -10,6 +11,7 @@ import '../../core/providers.dart';
 import 'lockscreen_notification.dart';
 import 'package:home_widget/home_widget.dart';
 
+import 'ios_quick.dart';
 import 'quick_actions.dart';
 import 'quick_surfaces.dart';
 
@@ -50,12 +52,16 @@ class LockscreenController with WidgetsBindingObserver {
     if (_started || !QuickSurfaces.supported) return;
     _started = true;
     WidgetsBinding.instance.addObserver(this);
-    // 小部件/快捷开关按钮的后台回调（不依赖锁屏开关）
-    await HomeWidget.registerInteractivityCallback(quickWidgetBackground);
-    await LockscreenNotification.init(onForegroundAction: (r) {
-      if (r.actionId != null) handle(r.actionId!);
-    });
-    _port = registerMainPort(handle);
+    if (Platform.isIOS) {
+      await _drainIos();
+    } else {
+      // 小部件/快捷开关按钮的后台回调（不依赖锁屏开关）
+      await HomeWidget.registerInteractivityCallback(quickWidgetBackground);
+      await LockscreenNotification.init(onForegroundAction: (r) {
+        if (r.actionId != null) handle(r.actionId!);
+      });
+      _port = registerMainPort(handle);
+    }
     final db = _ref.read(databaseProvider);
     _sub = db.tableUpdates(TableUpdateQuery.onAllTables([db.careLogs, db.babies])).listen((_) {
       _debounce?.cancel();
@@ -66,6 +72,9 @@ class LockscreenController with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && Platform.isIOS) {
+      _drainIos().then((_) => refresh());
+    }
     if (state == AppLifecycleState.resumed) {
       // App 进程活着但锁屏操作走了另一个数据库连接时，让界面重新查询
       final db = _ref.read(databaseProvider);
@@ -75,6 +84,17 @@ class LockscreenController with WidgetsBindingObserver {
 
   String? _done;
   DateTime? _doneAt;
+
+  /// iOS：执行小组件 / 控制中心 / 实时活动排队的动作
+  Future<void> _drainIos() async {
+    try {
+      final done = await IosQuick.drain(_ref.read(databaseProvider));
+      if (done != null) {
+        _done = done;
+        _doneAt = DateTime.now();
+      }
+    } catch (_) {}
+  }
 
   Future<void> handle(String actionId) async {
     final db = _ref.read(databaseProvider);

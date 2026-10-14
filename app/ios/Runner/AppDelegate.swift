@@ -12,5 +12,8 @@ import UIKit
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    if let reg = engineBridge.pluginRegistry.registrar(forPlugin: "HonghongLiveActivity") {
+      LiveActivityBridge.register(messenger: reg.messenger())
+    }
   }
 }
