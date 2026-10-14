@@ -38,6 +38,44 @@ api.example.com {
 - 已执行 0001 + 0002；公网验证：匿名注册、家庭创建/加入、外人隔离、Storage 按设备目录隔离均通过，测试用户已删除
 - 备份：`redeploy/backup.sh` → `/opt/honghong-supabase/backup.sh`，crontab 每天 03:30（服务器时间 CEST）
 
+## 妈咪日记 AI 网关：nc_am 线上部署（2026-10-14，P0，未接 LLM）
+
+- 目录：`/opt/honghong-ai-gateway`（feat/mommy-diary-p0 分支 `backend/ai-gateway` 的 Dockerfile、docker-compose.yml、package.json、src）
+- `.env`（权限 600）只有 `SUPABASE_JWT_SECRET` 一项，在服务器上从 `/opt/honghong-supabase/.env` 的 `JWT_SECRET` 生成；未配置任何 LLM Key，`/healthz` 返回 `llm_configured:false`。**密钥不入库**
+- 容器：`honghong-ai-gateway-ai-gateway-1`，端口 `127.0.0.1:8787`（只绑本机），`restart: unless-stopped`
+- 公网：`https://honghong.hczhw.com/ai/*`（前缀剥离后转发），例如 `/ai/healthz`、`/ai/diary-parse`（无 token 返回 401）
+- 反代：在 `/opt/1panel/www/sites/honghong.hczhw.com/proxy/root.conf` 的 `location / { return 404; }` 之前加了：
+  ```nginx
+  location /ai/ {
+      proxy_pass http://127.0.0.1:8787/;
+      proxy_set_header Host $host;
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto https;
+      proxy_http_version 1.1;
+      proxy_read_timeout 30s;
+  }
+  ```
+  OpenResty 跑在 1Panel 容器 `1Panel-openresty-UXJT`（host 网络）：`docker exec 1Panel-openresty-UXJT nginx -t && docker exec 1Panel-openresty-UXJT nginx -s reload`（reload，不要重启）
+- 改动前备份（服务器 UTC 时间戳）：
+  - `/opt/1panel/www/conf.d/honghong.hczhw.com.conf.bak-20261014-062222`
+  - `/opt/1panel/www/sites/honghong.hczhw.com/proxy/root.conf.bak-20261014-062222`
+
+### 更新
+```bash
+# box 上
+cd backend/ai-gateway && tar czf /tmp/aigw.tgz Dockerfile docker-compose.yml package.json src && scp /tmp/aigw.tgz nc-am:/tmp/
+# 服务器上（.env 保留不动）
+cd /opt/honghong-ai-gateway && cp -a src src.prev && tar xzf /tmp/aigw.tgz && docker compose up -d --build
+curl -s localhost:8787/healthz && curl -s -o /dev/null -w '%{http_code}\n' https://honghong.hczhw.com/ai/healthz
+```
+单实例，更新时有几秒中断（P0 未接生产流量，可接受）。
+
+### 回滚
+- 代码：`rm -rf src && mv src.prev src && docker compose up -d --build`
+- 下线网关：`docker compose down`，并恢复反代：
+  `sudo cp -p root.conf.bak-20261014-062222 root.conf`（在 proxy 目录内），再 `nginx -t` + `nginx -s reload`
+
 ## 历史部署：nc_am 第一次部署（2026-10-13，服务器被入侵，已整体删除；以下密钥全部作废）
 
 - 地址：`https://honghong.hczhw.com`（Cloudflare 代理 → 源站 1Panel OpenResty :80 → `127.0.0.1:8000` Supabase 网关）
