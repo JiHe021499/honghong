@@ -4,9 +4,9 @@
 
 | 接口 | 状态 |
 |---|---|
-| `GET /healthz` | ✅ P0，返回 `{ ok, llm_configured }` |
-| `POST /diary-parse` | P0 骨架：鉴权、限流（60 次/天/用户）、500 字上限、请求体上限；业务返回 501，P2 实现 |
-| `POST /diary-summary` | P0 骨架：鉴权、限流（3 次/天/用户）；业务返回 501，P2 实现 |
+| `GET /healthz` | ✅ 返回 `{ ok, llm_configured }` |
+| `POST /diary-parse` | ✅ P2：DeepSeek json_object + 提示词内 schema，强制校验、不合规重试一次；清洗（未知键丢弃、越界置空降置信度、诊断词回退原文）、原文覆盖补卡、风险词；限流 60 次/天/用户 |
+| `POST /diary-summary` | ✅ P2：只收聚合统计；≤50 字、无诊断词、不出现统计外数字，不合规重试一次后模板兜底；`idempotency_key` 24h 幂等（重放不占限流）；限流 3 次/天/用户 |
 | `POST /diary-asr` | 本期不做（D9） |
 
 服务端不落库用户文本，只打匿名指标日志（路由、状态码、耗时）。
@@ -37,8 +37,11 @@ location /ai/ {
 改前先备份，`nginx -t` 通过后 `nginx -s reload`。线上细节见 `backend/README.md`。
 App 侧地址即 `https://honghong.hczhw.com/ai/diary-parse`。
 
-## 供应商评测（P0，待拍板）
+## 评测
+供应商：DeepSeek `deepseek-chat`（用户已选，json_object 降级方案）。Key 只放环境变量 `DEEPSEEK_API_KEY` / 服务器 `.env`。
 ```bash
-LLM_BASE_URL=https://<厂商 OpenAI 兼容地址>/v1 LLM_API_KEY=... LLM_MODEL=... npm run eval
+DEEPSEEK_API_KEY=... npm run eval -- --out /tmp/results.json
 ```
-输出 schema 通过数、分类召回、P50/P90 延迟。评测记录见 `docs/architecture/mommy-diary-p0-vendor-eval.md`。
+结果见 `eval/REPORT.md`。
+
+状态码：400 参数错误；401 鉴权失败；429 限流；502 上游超时/错误或两次 schema 不合规（`{status:"failed", error}`，客户端按屏 14 兜底）；503 未配置 Key。
