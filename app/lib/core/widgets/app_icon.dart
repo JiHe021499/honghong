@@ -48,7 +48,11 @@ enum AppIcon {
   chevronRight('chevron_right'),
   chevronUp('chevron_up'),
   chevronDown('chevron_down'),
-  arrowForward('arrow_forward');
+  arrowForward('arrow_forward'),
+  // 妈咪日记（设计稿内联 SVG 导出，见 docs/design/mommy-diary/export_icons.py）
+  diary('diary'),
+  keyboard('keyboard'),
+  edit('edit');
 
   const AppIcon(this.file);
   final String file;
