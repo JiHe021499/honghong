@@ -1,0 +1,12 @@
+[
+ {"id":"s01","date":"2026-10-14","ageInDays":102,"stats":{"feed":{"count":4,"total_ml":360,"aggregate_count":6},"sleep":{"count":3,"total_min":410},"diaper":{"count":5,"poo":1},"mood":[{"period":"afternoon","type":"哭闹","intensity":"厉害"}],"other":["洗澡"]}},
+ {"id":"s02","date":"2026-10-14","ageInDays":30,"stats":{"feed":{"count":9},"diaper":{"count":8}}},
+ {"id":"s03","date":"2026-10-14","ageInDays":200,"stats":{"sleep":{"count":2,"total_min":95},"other":["辅食","疫苗"]}},
+ {"id":"s04","date":"2026-10-14","ageInDays":60,"stats":{"feed":{"aggregate_count":7},"mood":[{"period":"evening","type":"开心","intensity":null}]}},
+ {"id":"s05","date":"2026-10-14","ageInDays":45,"stats":{"feed":{"count":6,"total_ml":540},"sleep":{"count":5,"total_min":780},"diaper":{"count":7,"poo":2}}},
+ {"id":"s06","date":"2026-10-14","ageInDays":150,"stats":{"diaper":{"count":4,"poo":4},"mood":[{"period":"all_day","type":"烦躁","intensity":"有点"}],"other":["体温"]}},
+ {"id":"s07","date":"2026-10-14","ageInDays":90,"stats":{"feed":{"count":1}}},
+ {"id":"s08","date":"2026-10-14","ageInDays":120,"stats":{"feed":{"count":5,"aggregate_count":5},"sleep":{"count":1,"total_min":600}}},
+ {"id":"s09","date":"2026-10-14","ageInDays":20,"stats":{"feed":{"count":10,"total_ml":600},"diaper":{"count":10,"poo":3},"mood":[{"period":"night","type":"哭闹","intensity":"一直"}]}},
+ {"id":"s10","date":"2026-10-14","ageInDays":300,"stats":{"other":["洗澡","散步","剪指甲"]}}
+]

@@ -2,7 +2,10 @@
 
 更新：2026-10-14。依据架构 D11：国内供应商、数据不出境、必须支持 JSON schema 结构化输出。
 
-## 状态
+## 结论（2026-10-14 更新）
+用户选定 **DeepSeek deepseek-chat**，采用降级方案：json_object 模式 + schema 写进提示词，网关强制校验、不合规重试一次、仍不合规报错。P2 评测结果见 `backend/ai-gateway/eval/REPORT.md`。合规清单仍待确认。
+
+## 状态（P0 时）
 - ✅ 评测脚本：`backend/ai-gateway/eval/run.js`（OpenAI 兼容接口，`response_format: json_schema strict`），8 句种子用例。
 - ⛔ **未实测**：仓库和云电脑里没有任何厂商的 API Key，不能代为注册/付费，结果表为空。
 - ⛔ **厂商未选定**：需要用户拍板（见下）。

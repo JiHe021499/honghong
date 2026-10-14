@@ -7,8 +7,15 @@ export function loadConfig(env = process.env) {
     maxBodyBytes: Number(env.MAX_BODY_BYTES ?? 8 * 1024),
     maxTextChars: 500, // 架构 §8：文本长度上限 500 字
     limits: { 'diary-parse': Number(env.LIMIT_PARSE_PER_DAY ?? 60), 'diary-summary': Number(env.LIMIT_SUMMARY_PER_DAY ?? 3) },
-    // LLM 供应商待 P0 评测后由用户拍板（D11），此处只留占位。
-    llm: { provider: env.LLM_PROVIDER ?? '', apiKey: env.LLM_API_KEY ?? '', baseUrl: env.LLM_BASE_URL ?? '', model: env.LLM_MODEL ?? '' },
+    // LLM：用户已选 DeepSeek（json_object 降级方案，D11）。OpenAI 兼容接口。
+    llm: {
+      provider: env.LLM_PROVIDER ?? 'deepseek',
+      apiKey: env.DEEPSEEK_API_KEY ?? env.LLM_API_KEY ?? '',
+      baseUrl: env.LLM_BASE_URL ?? 'https://api.deepseek.com',
+      model: env.LLM_MODEL ?? 'deepseek-chat',
+      timeoutMs: Number(env.LLM_TIMEOUT_MS ?? 7000), // 客户端 8s 超时，留 1s 余量
+    },
+    idempotencyTtlMs: 24 * 3600 * 1000,
   };
   return cfg;
 }

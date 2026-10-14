@@ -1,0 +1,509 @@
+{
+  "metrics": {
+    "model": "deepseek-chat",
+    "prompt_version": "parse-v1",
+    "parse": {
+      "cases": 80,
+      "schema_first_try_pass": 1,
+      "retried": 0,
+      "failed": 0,
+      "partial": 0,
+      "category_set_exact": 0.925,
+      "category_precision": 0.954,
+      "category_recall": 0.99,
+      "field_checks": "80/84",
+      "field_check_accuracy": 0.952,
+      "risk_recall": "4/4",
+      "risk_false_positive": 0,
+      "latency_ms": {
+        "p50": 1025,
+        "p90": 1230,
+        "max": 1851
+      }
+    },
+    "summary": {
+      "cases": 10,
+      "errors": 0,
+      "fallback": 1,
+      "compliant": 10,
+      "latency_ms": {
+        "p50": 946,
+        "p90": 1255
+      }
+    }
+  },
+  "misses": [
+    {
+      "id": "c002",
+      "text": "上午喂了两次奶，拉了一次",
+      "exp": [
+        "diaper",
+        "feeding"
+      ],
+      "got": [
+        "diaper",
+        "feeding"
+      ],
+      "checks": [
+        true,
+        false
+      ],
+      "status": "ok",
+      "risk": false,
+      "expRisk": false,
+      "cards": [
+        {
+          "category": "feeding",
+          "kind": "aggregate",
+          "event_time": null,
+          "end_time": null,
+          "day_offset": 0,
+          "time_period": "morning",
+          "attributes": {
+            "count": 2
+          },
+          "intensity": null,
+          "note": "上午喂了两次奶",
+          "confidence": 0.9
+        },
+        {
+          "category": "diaper",
+          "kind": "event",
+          "event_time": null,
+          "end_time": null,
+          "day_offset": 0,
+          "time_period": "morning",
+          "attributes": {
+            "count": 1
+          },
+          "intensity": null,
+          "note": "拉了一次",
+          "confidence": 0.7
+        }
+      ]
+    },
+    {
+      "id": "c011",
+      "text": "一天拉了三次，都是稀的",
+      "exp": [
+        "diaper"
+      ],
+      "got": [
+        "diaper"
+      ],
+      "checks": [
+        false
+      ],
+      "status": "ok",
+      "risk": false,
+      "expRisk": false,
+      "cards": [
+        {
+          "category": "diaper",
+          "kind": "aggregate",
+          "event_time": null,
+          "end_time": null,
+          "day_offset": 0,
+          "time_period": "all_day",
+          "attributes": {
+            "count": 3,
+            "texture_note": "稀的"
+          },
+          "intensity": null,
+          "note": "一天拉了三次，都是稀的",
+          "confidence": 0.9
+        }
+      ]
+    },
+    {
+      "id": "c016",
+      "text": "吃完奶吐了一点奶",
+      "exp": [
+        "feeding",
+        "other"
+      ],
+      "got": [
+        "other"
+      ],
+      "checks": [
+        true
+      ],
+      "status": "ok",
+      "risk": false,
+      "expRisk": false,
+      "cards": [
+        {
+          "category": "other",
+          "kind": "event",
+          "event_time": null,
+          "end_time": null,
+          "day_offset": 0,
+          "time_period": null,
+          "attributes": {
+            "topic": "吐奶"
+          },
+          "intensity": "一点",
+          "note": "吃完奶吐了一点奶",
+          "confidence": 0.9
+        }
+      ]
+    },
+    {
+      "id": "c023",
+      "text": "便便有点绿，量不多",
+      "exp": [
+        "diaper"
+      ],
+      "got": [
+        "diaper"
+      ],
+      "checks": [
+        false
+      ],
+      "status": "ok",
+      "risk": false,
+      "expRisk": false,
+      "cards": [
+        {
+          "category": "diaper",
+          "kind": "event",
+          "event_time": null,
+          "end_time": null,
+          "day_offset": 0,
+          "time_period": null,
+          "attributes": {
+            "texture_note": "有点绿，量不多"
+          },
+          "intensity": "有点",
+          "note": "便便有点绿，量不多",
+          "confidence": 0.85
+        }
+      ]
+    },
+    {
+      "id": "c032",
+      "text": "嗯…那个，刚刚喂了奶，然后拉了",
+      "exp": [
+        "diaper",
+        "feeding"
+      ],
+      "got": [
+        "diaper",
+        "feeding",
+        "other"
+      ],
+      "checks": [
+        false
+      ],
+      "status": "ok",
+      "risk": false,
+      "expRisk": false,
+      "cards": [
+        {
+          "category": "feeding",
+          "kind": "event",
+          "event_time": null,
+          "end_time": null,
+          "day_offset": 0,
+          "time_period": null,
+          "attributes": {},
+          "intensity": null,
+          "note": "刚刚喂了奶",
+          "confidence": 0.85
+        },
+        {
+          "category": "diaper",
+          "kind": "event",
+          "event_time": null,
+          "end_time": null,
+          "day_offset": 0,
+          "time_period": null,
+          "attributes": {},
+          "intensity": null,
+          "note": "然后拉了",
+          "confidence": 0.8
+        },
+        {
+          "category": "other",
+          "kind": "event",
+          "event_time": null,
+          "end_time": null,
+          "day_offset": 0,
+          "time_period": null,
+          "attributes": {},
+          "intensity": null,
+          "note": "嗯…那个",
+          "confidence": 0.5
+        }
+      ]
+    },
+    {
+      "id": "c038",
+      "text": "刚刚抽搐了一下，吓死我了",
+      "exp": [
+        "other"
+      ],
+      "got": [
+        "mood",
+        "other"
+      ],
+      "checks": [],
+      "status": "ok",
+      "risk": true,
+      "expRisk": true,
+      "cards": [
+        {
+          "category": "other",
+          "kind": "event",
+          "event_time": null,
+          "end_time": null,
+          "day_offset": 0,
+          "time_period": null,
+          "attributes": {
+            "topic": "抽搐"
+          },
+          "intensity": "一下",
+          "note": "刚刚抽搐了一下",
+          "confidence": 0.85
+        },
+        {
+          "category": "mood",
+          "kind": "event",
+          "event_time": null,
+          "end_time": null,
+          "day_offset": 0,
+          "time_period": null,
+          "attributes": {
+            "type": "惊吓"
+          },
+          "intensity": "吓死我了",
+          "note": "吓死我了",
+          "confidence": 0.8
+        }
+      ]
+    },
+    {
+      "id": "c059",
+      "text": "今天精神很好，玩了好久",
+      "exp": [
+        "mood"
+      ],
+      "got": [
+        "mood",
+        "other"
+      ],
+      "checks": [
+        true
+      ],
+      "status": "ok",
+      "risk": false,
+      "expRisk": false,
+      "cards": [
+        {
+          "category": "mood",
+          "kind": "event",
+          "event_time": null,
+          "end_time": null,
+          "day_offset": 0,
+          "time_period": "all_day",
+          "attributes": {
+            "type": "精神很好"
+          },
+          "intensity": null,
+          "note": "今天精神很好",
+          "confidence": 0.85
+        },
+        {
+          "category": "other",
+          "kind": "event",
+          "event_time": null,
+          "end_time": null,
+          "day_offset": 0,
+          "time_period": "all_day",
+          "attributes": {
+            "topic": "玩耍"
+          },
+          "intensity": null,
+          "note": "玩了好久",
+          "confidence": 0.7
+        }
+      ]
+    },
+    {
+      "id": "c063",
+      "text": "屁屁有点红，擦了护臀膏",
+      "exp": [
+        "other"
+      ],
+      "got": [
+        "diaper",
+        "other"
+      ],
+      "checks": [
+        true
+      ],
+      "status": "ok",
+      "risk": false,
+      "expRisk": false,
+      "cards": [
+        {
+          "category": "diaper",
+          "kind": "event",
+          "event_time": null,
+          "end_time": null,
+          "day_offset": 0,
+          "time_period": null,
+          "attributes": {
+            "texture_note": "屁屁有点红"
+          },
+          "intensity": "有点",
+          "note": "屁屁有点红",
+          "confidence": 0.85
+        },
+        {
+          "category": "other",
+          "kind": "event",
+          "event_time": null,
+          "end_time": null,
+          "day_offset": 0,
+          "time_period": null,
+          "attributes": {
+            "topic": "护臀膏"
+          },
+          "intensity": null,
+          "note": "擦了护臀膏",
+          "confidence": 0.8
+        }
+      ]
+    },
+    {
+      "id": "c070",
+      "text": "拉肚子了，一上午拉了四次水样便",
+      "exp": [
+        "diaper"
+      ],
+      "got": [
+        "diaper",
+        "other"
+      ],
+      "checks": [
+        true
+      ],
+      "status": "ok",
+      "risk": false,
+      "expRisk": false,
+      "cards": [
+        {
+          "category": "diaper",
+          "kind": "aggregate",
+          "event_time": null,
+          "end_time": null,
+          "day_offset": 0,
+          "time_period": "morning",
+          "attributes": {
+            "type": "poo",
+            "count": 4,
+            "texture_note": "水样便"
+          },
+          "intensity": null,
+          "note": "一上午拉了四次水样便",
+          "confidence": 0.9
+        },
+        {
+          "category": "other",
+          "kind": "event",
+          "event_time": null,
+          "end_time": null,
+          "day_offset": 0,
+          "time_period": null,
+          "attributes": {},
+          "intensity": null,
+          "note": "拉肚子了",
+          "confidence": 0.5
+        }
+      ]
+    }
+  ],
+  "summaries": [
+    {
+      "id": "s01",
+      "ms": 2083,
+      "content": "今天记录了4次喂奶、妈妈提到全天约6次、睡了约7小时、换了5次尿布，辛苦啦",
+      "fallback": true,
+      "reason": "too_long",
+      "compliant": true
+    },
+    {
+      "id": "s02",
+      "ms": 809,
+      "content": "今天记录了9次喂奶、8次尿布，妈妈辛苦啦。",
+      "fallback": false,
+      "reason": null,
+      "compliant": true
+    },
+    {
+      "id": "s03",
+      "ms": 646,
+      "content": "今天记录了2次睡眠，共约1小时35分钟，还有辅食和疫苗，妈妈辛苦啦。",
+      "fallback": false,
+      "reason": null,
+      "compliant": true
+    },
+    {
+      "id": "s04",
+      "ms": 850,
+      "content": "今天记录了妈妈提到全天约7次喂奶，傍晚心情开心，妈妈辛苦啦。",
+      "fallback": false,
+      "reason": null,
+      "compliant": true
+    },
+    {
+      "id": "s05",
+      "ms": 1255,
+      "content": "今天记录了6次喂奶共540ml，睡了约13小时，尿布7次含2次便便，妈妈辛苦啦。",
+      "fallback": false,
+      "reason": null,
+      "compliant": true
+    },
+    {
+      "id": "s06",
+      "ms": 1095,
+      "content": "今天记录了4次尿布、4次便便，宝宝有点烦躁，妈妈辛苦啦。",
+      "fallback": false,
+      "reason": null,
+      "compliant": true
+    },
+    {
+      "id": "s07",
+      "ms": 946,
+      "content": "今天记录了1次喂奶，妈妈辛苦啦。",
+      "fallback": false,
+      "reason": null,
+      "compliant": true
+    },
+    {
+      "id": "s08",
+      "ms": 782,
+      "content": "今天记录了5次喂奶，睡眠约10小时，妈妈辛苦啦。",
+      "fallback": false,
+      "reason": null,
+      "compliant": true
+    },
+    {
+      "id": "s09",
+      "ms": 1118,
+      "content": "今天记录了10次喂奶共600ml，换尿布10次含3次便便，夜里一直哭闹，妈妈辛苦啦。",
+      "fallback": false,
+      "reason": null,
+      "compliant": true
+    },
+    {
+      "id": "s10",
+      "ms": 1013,
+      "content": "今天记录了洗澡、散步和剪指甲，妈妈辛苦啦。",
+      "fallback": false,
+      "reason": null,
+      "compliant": true
+    }
+  ]
+}
