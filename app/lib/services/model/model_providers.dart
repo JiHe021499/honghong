@@ -25,12 +25,10 @@ final activeModelProvider = FutureProvider<LoadedModel?>((ref) async {
 });
 
 /// 录音 → embedding。测试环境没有 TFLite 原生库，为 null
-final cryEmbedderProvider = FutureProvider<CryEmbedder?>((ref) async {
+final cryEmbedderProvider = FutureProvider<BackgroundCryEmbedder?>((ref) async {
   if (!AutoListenController.enabledInThisEnv) return null;
   try {
-    final e = await CryEmbedder.load();
-    ref.onDispose(e.close);
-    return e;
+    return await BackgroundCryEmbedder.load();
   } catch (_) {
     return null;
   }

@@ -1,7 +1,10 @@
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:tflite_flutter/tflite_flutter.dart';
 
 import '../../domain/predictor/cry_predictor.dart';
@@ -25,6 +28,28 @@ class CryEmbedder {
   static const maxSeconds = 12;
 
   static Future<CryEmbedder> load() async => CryEmbedder(await TfliteFrameEmbedder.load());
+
+  /// 后台 isolate 里做完整流程：读 WAV → 低通 → 分帧 → YAMNet → 取均值。
+  /// [make] 在后台 isolate 里创建帧模型（必须可以跨 isolate 传递，例如只捕获模型字节的闭包）。
+  /// 计算和同步版 [embed] 完全相同，只是不占 UI 线程。
+  static Future<AudioFeatures> embedWavInBackground(String path, FrameEmbedder Function() make) {
+    final sw = Stopwatch()..start();
+    return Isolate.run(() {
+      final t = Stopwatch()..start();
+      final model = make();
+      final loadMs = t.elapsedMilliseconds;
+      try {
+        final out = CryEmbedder(model).embed(decodeWav16(File(path).readAsBytesSync()));
+        return (out, loadMs, t.elapsedMilliseconds);
+      } finally {
+        model.close();
+      }
+    }, debugName: 'cry-embed').then((r) {
+      final (out, loadMs, workMs) = r;
+      if (kDebugMode) debugPrint('[cry-embed] 后台 isolate：加载模型 ${loadMs}ms，总计算 ${workMs}ms，往返 ${sw.elapsedMilliseconds}ms');
+      return out;
+    });
+  }
 
   static final Float32List fir = firLowpass();
 
@@ -140,4 +165,21 @@ class TfliteFrameEmbedder implements FrameEmbedder {
 
   @override
   void close() => _it.close();
+}
+
+/// 录音分析用的嵌入器：主 isolate 只保存模型字节，每次分析在后台 isolate 里加载并推理，
+/// 不和自动监听用的检测模型（yamnet.tflite，另一个解释器）共享任何状态。
+class BackgroundCryEmbedder {
+  BackgroundCryEmbedder(this.modelBytes);
+  final Uint8List modelBytes;
+
+  static Future<BackgroundCryEmbedder> load() async {
+    final data = await rootBundle.load(CryEmbedder.asset);
+    return BackgroundCryEmbedder(data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes));
+  }
+
+  Future<AudioFeatures> embedWav(String path) {
+    final bytes = modelBytes;
+    return CryEmbedder.embedWavInBackground(path, () => TfliteFrameEmbedder(Interpreter.fromBuffer(bytes)));
+  }
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/db/app_database.dart';
@@ -115,13 +116,15 @@ class CryFlow {
     if (audio.embedding == null && audioPath != null) {
       try {
         final emb = await _ref.read(cryEmbedderProvider.future);
-        if (emb != null) audio = await emb.embedWav(audioPath);
+        if (emb != null) audio = await emb.embedWav(audioPath); // 后台 isolate，不卡界面
       } catch (_) {
         // 特征提取失败：只用记录推断
       }
     }
     final predictor = await _ref.read(cryPredictorProvider.future);
-    final prediction = await predictor.predict(audio, ctx);
+    final sw = Stopwatch()..start();
+    final prediction = await predictor.predict(audio, ctx); // 分类头只有一层，主线程 <1ms
+    if (kDebugMode) debugPrint('[cry-analyze] 分类+融合 ${sw.elapsedMicroseconds}µs');
     return _ref.read(cryEventRepositoryProvider).save(
           babyId: baby.id,
           startedAt: startedAt,

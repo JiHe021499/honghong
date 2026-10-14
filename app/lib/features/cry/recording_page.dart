@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,6 +16,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/hh_widgets.dart';
 import '../../services/audio/auto_listen.dart';
+import 'analyzing_view.dart';
 
 /// 录音（设计稿 11）：16kHz 单声道 WAV，最长 10 秒，实时波形 + 倒计时圆环。
 /// 没有麦克风权限时仍可"现在就分析"，只用记录推断。
@@ -38,6 +40,10 @@ class _RecordingPageState extends ConsumerState<RecordingPage> {
   bool _recording = false;
   bool _denied = false;
   bool _busy = false;
+  bool _analyzing = false;
+
+  /// 过渡动画最少显示这么久，避免一闪而过
+  static const minAnalyzing = Duration(milliseconds: 600);
   late final AutoListenController _auto;
 
   @override
@@ -87,14 +93,21 @@ class _RecordingPageState extends ConsumerState<RecordingPage> {
     _busy = true;
     _timer?.cancel();
     await _amp?.cancel();
+    if (mounted) setState(() => _analyzing = true);
+    final sw = Stopwatch()..start();
     String? path;
     if (_recording) path = await _recorder?.stop();
-    final id = await ref.read(cryFlowProvider).analyze(
-          startedAt: _startedAt,
-          durationMs: _elapsedMs,
-          audioPath: path,
-          autoTriggered: widget.auto,
-        );
+    final results = await Future.wait([
+      ref.read(cryFlowProvider).analyze(
+            startedAt: _startedAt,
+            durationMs: _elapsedMs,
+            audioPath: path,
+            autoTriggered: widget.auto,
+          ),
+      Future<void>.delayed(minAnalyzing),
+    ]);
+    final id = results.first as String;
+    if (kDebugMode) debugPrint('[cry-analyze] 停止录音到出结果 ${sw.elapsedMilliseconds}ms（含最少 ${minAnalyzing.inMilliseconds}ms 动画）');
     if (mounted) context.pushReplacement(Routes.result(id));
   }
 
@@ -127,6 +140,11 @@ class _RecordingPageState extends ConsumerState<RecordingPage> {
     final levels = _recording
         ? _levels
         : [for (var i = 0; i < bars; i++) .25 + .2 * math.sin(i * .9 + _elapsedMs / 300).abs()];
+    if (_analyzing) {
+      return const Scaffold(
+        body: SafeArea(child: Center(child: AnalyzingView(key: Key('analyzing')))),
+      );
+    }
     return Scaffold(
       body: SafeArea(
         child: Padding(
