@@ -1,10 +1,15 @@
+import 'package:drift/drift.dart' hide Column;
+import 'package:flutter/widgets.dart' hide Table;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/env.dart';
+import '../../core/prefs.dart';
 import '../../core/providers.dart';
+import '../../data/db/app_database.dart';
 import '../../data/repositories/diary_repository.dart';
 import '../../domain/diary/diary_service.dart';
+import '../../domain/diary/summary_service.dart';
 import '../../services/diary/diary_api.dart';
 import '../../services/diary/cloud_voice_capture.dart';
 import '../../services/diary/voice_capture.dart';
@@ -47,10 +52,18 @@ final todayDiaryProvider = StreamProvider.autoDispose<List<TimelineEntry>>((ref)
   yield* ref.watch(diaryRepositoryProvider).watchTimeline(baby.id, DateTime.now());
 });
 
-/// 今天的小结是否已生成（首页入口卡第 2 屏）
-final todaySummaryReadyProvider = FutureProvider.autoDispose<bool>((ref) async {
+/// 某天的小结行（随数据库变化刷新）
+final summaryRowProvider = StreamProvider.autoDispose.family<DailySummary?, DateTime>((ref, day) async* {
   final baby = await ref.watch(currentBabyProvider.future);
-  final s = await ref.watch(diaryRepositoryProvider).summaryOf(baby.id, DateTime.now());
+  final db = ref.watch(databaseProvider);
+  final d = DateTime(day.year, day.month, day.day);
+  yield* (db.select(db.dailySummaries)..where((s) => s.babyId.equals(baby.id) & s.date.equals(d))).watchSingleOrNull();
+});
+
+/// 今天的小结是否已生成（首页入口卡第 2 屏）
+final todaySummaryReadyProvider = Provider.autoDispose<bool>((ref) {
+  final n = ref.watch(summaryClockProvider)();
+  final s = ref.watch(summaryRowProvider(DateTime(n.year, n.month, n.day))).value;
   return s?.status == 'ready';
 });
 
@@ -62,3 +75,54 @@ const kDiaryDraft = 'diary_draft';
 
 /// 联网识别告知：null=还没问过，true=已同意，false=已拒绝（拒绝后不再自动弹，直接退回文字输入）
 const kDiaryCloudAsrConsent = 'diary_cloud_asr_consent';
+
+/// 联网语音识别同意状态：null 未问过 / true 同意 / false 不用。
+/// 首次告知弹窗和设置开关都通过它写同一个 pref，保持同步。
+final cloudAsrConsentProvider = NotifierProvider<CloudAsrConsentNotifier, bool?>(CloudAsrConsentNotifier.new);
+
+class CloudAsrConsentNotifier extends Notifier<bool?> {
+  @override
+  bool? build() => ref.watch(prefsProvider).getBool(kDiaryCloudAsrConsent);
+  Future<void> set(bool v) async {
+    await ref.read(prefsProvider).setBool(kDiaryCloudAsrConsent, v);
+    state = v;
+  }
+}
+
+/// 今日小结服务（时钟可在测试里替换）
+final summaryClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
+final summaryServiceProvider =
+    Provider((ref) => SummaryService(ref.watch(databaseProvider), api: ref.watch(diaryApiProvider), now: ref.watch(summaryClockProvider)));
+
+/// 前台触发小结（回到前台、打开首页、打开日记页）。失败静默，不打扰用户。
+final summaryTriggerProvider = Provider<SummaryTrigger>((ref) {
+  final t = SummaryTrigger(ref);
+  ref.onDispose(t.dispose);
+  return t;
+});
+
+class SummaryTrigger with WidgetsBindingObserver {
+  SummaryTrigger(this._ref);
+  final Ref _ref;
+  bool _observing = false;
+
+  Future<void> kick() async {
+    if (!_observing) {
+      _observing = true;
+      WidgetsBinding.instance.addObserver(this);
+    }
+    try {
+      final baby = await _ref.read(currentBabyProvider.future);
+      await _ref.read(summaryServiceProvider).trigger(baby.id, baby.birthDate);
+    } catch (_) {}
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) kick();
+  }
+
+  void dispose() {
+    if (_observing) WidgetsBinding.instance.removeObserver(this);
+  }
+}

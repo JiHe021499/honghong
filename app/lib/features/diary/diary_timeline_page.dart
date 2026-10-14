@@ -16,7 +16,9 @@ import '../../domain/diary/diary_card_db.dart';
 import '../logs/record_editor_sheet.dart';
 import 'diary_edit_sheet.dart';
 import 'diary_entry_row.dart';
+import '../../domain/diary/summary_service.dart';
 import 'diary_flow.dart' show diaryClockProvider;
+import 'diary_providers.dart' show summaryClockProvider, summaryRowProvider;
 import 'diary_widgets.dart';
 
 /// 进入时间线时带的参数：刚保存了几条（屏 16 的提示条）
@@ -147,6 +149,15 @@ class _DiaryTimelinePageState extends ConsumerState<DiaryTimelinePage> {
     return d.intensity == null ? t : '$t · ${d.intensity}';
   }
 
+  /// 21:00 后（或过去某天）小结还没好：pending / failed 都只说"还在整理"
+  bool _pending(WidgetRef ref) {
+    final n = ref.watch(summaryClockProvider)();
+    final isToday = day == DateTime(n.year, n.month, n.day);
+    if (isToday && n.hour < summaryHour) return false;
+    final st = ref.watch(summaryRowProvider(day)).value?.status;
+    return st == 'pending' || st == 'failed';
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.hh;
@@ -162,7 +173,21 @@ class _DiaryTimelinePageState extends ConsumerState<DiaryTimelinePage> {
             const SizedBox(height: 4),
             _DayStrip(today: today, selected: day, onPick: (d) => setState(() => day = d)),
             const SizedBox(height: 12),
-            if (summary != null) _SummaryCard(summary: summary),
+            if (summary != null)
+              GestureDetector(
+                onTap: () => context.push('${Routes.diarySummary}?date=${DateFormat('yyyy-MM-dd').format(day)}'),
+                child: _SummaryCard(summary: summary),
+              )
+            else if (_pending(ref))
+              Padding(
+                key: const Key('tl-summary-pending'),
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(children: [
+                  const HhIcon(AppIcon.nightMode, size: 22),
+                  const SizedBox(width: 8),
+                  Text('今晚小结还在整理', style: TextStyle(fontSize: 13, color: c.sub)),
+                ]),
+              ),
             Padding(
               padding: const EdgeInsets.only(top: 6, bottom: 10),
               child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
@@ -242,7 +267,7 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.hh;
-    final at = summary.generatedAt == null ? '' : ' · ${DateFormat('HH:mm').format(summary.generatedAt!)}';
+    final at = summary.generatedAt == null ? '' : ' · 生成于 ${DateFormat('HH:mm').format(summary.generatedAt!)}';
     return Container(
       key: const Key('tl-summary'),
       margin: const EdgeInsets.only(bottom: 14),

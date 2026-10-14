@@ -14,10 +14,10 @@ class DiaryEntryCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.hh;
-    final summary = ref.watch(todaySummaryReadyProvider).value ?? false;
+    final summary = ref.watch(todaySummaryReadyProvider);
     return GestureDetector(
       key: const Key('diary-entry'),
-      onTap: () => context.push(Routes.diary),
+      onTap: () => context.push(summary ? Routes.diarySummary : Routes.diary),
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

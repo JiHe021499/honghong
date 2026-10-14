@@ -17,6 +17,7 @@ import '../../services/audio/auto_listen.dart';
 import '../care/care_actions.dart';
 import '../care/care_log_row.dart';
 import '../diary/diary_entry_card.dart';
+import '../diary/diary_providers.dart' show summaryTriggerProvider;
 
 /// 首页（设计稿 01/02/04/06/08/10，夜间 14）
 class HomePage extends ConsumerStatefulWidget {
@@ -36,6 +37,15 @@ class _HomePageState extends ConsumerState<HomePage> {
   String? _justSavedId;
 
   late final actions = CareActions(ref);
+
+  @override
+  void initState() {
+    super.initState();
+    // 今日小结前台触发（21:00 后 / 补生成昨天，架构 §5.4）
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(summaryTriggerProvider).kick();
+    });
+  }
 
   @override
   void dispose() {
