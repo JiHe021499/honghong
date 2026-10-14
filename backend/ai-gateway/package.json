@@ -1,0 +1,13 @@
+{
+  "name": "honghong-ai-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "description": "哄哄 AI 网关（妈咪日记）：独立轻量服务，挂在 Caddy 后，校验 Supabase JWT（架构 D10）",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test test/",
+    "eval": "node eval/run.js"
+  }
+}

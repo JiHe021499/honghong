@@ -51,3 +51,13 @@
 | `arrow_forward` | Icons.arrow_forward_rounded | 更新页版本箭头 | features/update/update_page.dart:211 |
 
 备注：同一个 emoji 在代码里有多种含义（🍼 喂奶/饿了，😴 睡觉/困了/已醒，🫧 拍嗝/胀气，🧷 换尿布/不舒服），所以拆成了不同的图标，接入时请按语义选用。另外，`EmojiTile` 和 `.emoji` getter（care_detail.dart、cause_ui.dart）是动态渲染的入口。
+
+## 妈咪日记新增（P0）
+
+由 `docs/design/mommy-diary/export_icons.py` 从设计稿内联 SVG 导出（描边 #5A3E36 与设计稿一致，加奶油色外圈）。
+
+| 文件名 | 用途 |
+|---|---|
+| `diary` | 首页入口卡/今日小结/首次引导的本子图标 |
+| `keyboard` | 录音页“改用文字输入” |
+| `edit` | 确认卡片右侧编辑 |

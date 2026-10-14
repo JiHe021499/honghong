@@ -1,0 +1,8 @@
+{"id":"c01","text":"今天吃奶6次，下午哭得厉害","expect":["feeding","mood"]}
+{"id":"c02","text":"上午喂了两次奶，拉了一次","expect":["feeding","diaper"]}
+{"id":"c03","text":"中午睡了一个多小时","expect":["sleep"]}
+{"id":"c04","text":"三点喂了120毫升配方奶，换了个尿布有尿","expect":["feeding","diaper"]}
+{"id":"c05","text":"昨晚夜里醒了三次，十一点睡的","expect":["sleep"]}
+{"id":"c06","text":"有点发烧38.6，精神蔫蔫的","expect":["other","mood"]}
+{"id":"c07","text":"今天洗了澡，左边亲喂了20分钟","expect":["other","feeding"]}
+{"id":"c08","text":"拉了黄色软便，下午挺开心的","expect":["diaper","mood"]}

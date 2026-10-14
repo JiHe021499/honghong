@@ -1,0 +1,8 @@
+# 独立部署，不依赖 Supabase functions（D10）。只绑定本机端口，由 Caddy 反代。
+services:
+  ai-gateway:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:8787:8787"
