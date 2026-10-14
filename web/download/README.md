@@ -9,7 +9,7 @@
 1. 同源 `/download/data/version.json`：服务器定时任务 `deploy/sync-version.sh` 从 honghong-releases 拉的副本；
 2. `https://raw.githubusercontent.com/JiHe021499/honghong-releases/main/version.json`（公开、允许跨域）。
 
-`channels.stable` 给正式版页，`channels.dev` 给测试版页。用到的字段是 versionName、versionCode、publishedAt（按北京时间显示）、size、apkUrl（GitHub Release 资产地址）、changelog（按行拆成更新说明，最多 8 条）。
+`channels.stable` 给正式版页，`channels.dev` 给测试版页。用到的字段是 versionName、versionCode、publishedAt（按北京时间显示）、size、localApkUrl（本站 APK，同步脚本校验后才写）、apkUrl（GitHub Release 资产地址，作备用）、changelog（按行拆成更新说明，最多 8 条；正式版来自人工写的标签说明，测试版来自提交信息并去掉 feat:/fix: 等前缀）。
 这个 version.json 由 honghong-releases 的 publish.yml 在每次发版时更新，所以**发版后页面自动更新，不需要改 config，也不需要动 releases 仓库**。
 
 - 还没有正式版时，正式版页显示「正式版即将发布」，下载按钮置灰。

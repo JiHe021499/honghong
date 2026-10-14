@@ -84,7 +84,10 @@
 ## 4. 强制更新标记
 
 - 提交信息里含 `[强制更新]` 或 `[force]`（不区分大小写）。
-- CI 取「上次已发布版本的 commit（version.json 里的 `commit`）..HEAD」之间、`app/` 目录相关的提交信息作为更新日志（最多 30 条），**只要其中任一条带标记**，本次发布就 `force: true`，并把 `minSupportedVersionCode` 设为本次 versionCode。
+- 更新说明（`changelog`）的来源按渠道不同：
+  - **dev**：CI 取「上次已发布版本的 commit（version.json 里的 `commit`）..HEAD」之间、`app/` 目录相关的提交信息（最多 30 条），并**去掉 `feat:`/`fix(scope):`/`test:`/`chore:`/`docs:` 等前缀和 scope**。
+  - **stable**：用**标签说明**（`git tag -a vX.Y.Z -F notes.md` 写进去的内容），由人工撰写。标签不是带说明的标签、或说明为空时，「发布前检查」直接报错，不会签名和发布。
+- 更新说明里**只要任一行带标记**，本次发布就 `force: true`，并把 `minSupportedVersionCode` 设为本次 versionCode。正式版要强制更新，就把 `[强制更新]` 写进标签说明。
 - App 端：`forced = 有更新 && (force || 当前 versionCode < minSupportedVersionCode)`。强制更新不能「稍后」，也不受「跳过此版本」影响。
 - 注意：下一次不带标记的发布会把 `minSupportedVersionCode` 写回 0，也就是说强制只对「直接跳到那一版」有效，见第 10 节。
 
@@ -120,7 +123,8 @@ App（仅 Android，`inAppUpdateSupported`）：
 2. 如果要升次版本，先改 `app/pubspec.yaml` 的 `version:`（例如 `0.2.0+1`）并合进 master（不会发版）。
 3. 打标签并推送（标签名决定 versionName，**不要和已有 dev 版本号重名**，见第 10 节）：
    ```bash
-   git tag -a v0.2.0 -m "哄哄 0.2.0"
+   # notes.md 是给用户看的更新说明，每行一条，以「- 」开头，会原样显示在 App 更新弹窗和 /download 页面
+   git tag -a v0.2.0 -F notes.md
    git push origin v0.2.0
    ```
 4. 等 Android APK 工作流和 honghong-releases 的「发布安装包」都成功；检查 Release `v0.2.0`（非 Pre-release）和 `version.json` 的 `channels.stable`。
@@ -199,6 +203,7 @@ scp /tmp/download-page.tgz nc-am:/tmp/
 S=/opt/1panel/www/sites/honghong.hczhw.com
 sudo rm -rf $S/download.new && sudo mkdir $S/download.new && sudo tar xzf /tmp/download-page.tgz -C $S/download.new
 sudo cp -a $S/download/data $S/download.new/
+sudo cp -al $S/download/files $S/download.new/ 2>/dev/null || true   # 硬链接，不占额外空间
 sudo rm -rf $S/download.prev && sudo mv $S/download $S/download.prev && sudo mv $S/download.new $S/download
 ```
 
@@ -209,5 +214,62 @@ sudo rm -rf $S/download.prev && sudo mv $S/download $S/download.prev && sudo mv 
 **注意**
 - 不要把 `web/download/deploy/` 和 README 传上服务器。
 - 在 1Panel 面板里改这个站点的「反向代理」时，留意它不会覆盖 `proxy/download.conf`（文件名和面板生成的不同）。
-- APK 下载地址是 GitHub Release 资产（`github.com/.../releases/download/...`），国内网络可能慢或打不开。
+- 二期起 APK 也同步到本站（见下），页面优先从本站下载，GitHub 只作备用。
 
+### 11.1 二期：本站同步 APK、更新说明
+
+- `sync-version.sh` 在同步 version.json 的同时，把每个渠道当前版本的 APK 下载到 `download/files/<渠道>/<apkName>`：
+  - 只接受 `https://github.com/JiHe021499/honghong-releases/releases/download/` 下的地址；
+  - 先下到同目录的临时文件，**大小和 sha256 都和 version.json 一致**才 `rename` 成正式文件（原子替换），否则丢弃；
+  - 校验通过后在 `data/version.json` 的 `channels.<渠道>` 里写 `localApkUrl`（如 `/download/files/dev/honghong-0.1.19.apk`）。下载失败或校验失败就不写，页面自动用 GitHub 地址；
+  - 每个渠道保留最近 3 个 APK（`HH_KEEP`），当前版本永远不删；磁盘剩余低于 2 GB（`HH_MIN_FREE_MB`）时不下载；
+  - 用文件锁防止上一轮没跑完时重入；已校验过的文件记在 `.sha256` 标记里，之后每 5 分钟不重复算哈希。
+- 页面：有 `localApkUrl` 时主按钮走本站，下面给一个「从 GitHub 下载」的备用链接；拿不到本站数据时退回 raw.githubusercontent.com，只有 GitHub 地址。
+- nginx：`/download/files/` 下只放行 `.apk`，`Content-Type: application/vnd.android.package-archive`、`Content-Disposition: attachment`；`.sha256` 标记、临时文件、锁文件都返回 404。
+- 磁盘：nc_am 根分区 1007G，已用 213G，可用 754G（2026-10-14 查看）。APK 约 22 MB，两个渠道各 3 个，约 140 MB。
+
+**二期上线（需本人确认后执行；一期已上线，只替换页面、脚本和 conf）**
+```sh
+# box 上
+cd /workspace/honghong/web/download
+tar czf /tmp/download-page.tgz index.html beta assets
+scp /tmp/download-page.tgz deploy/sync-version.sh deploy/download.conf nc-am:/tmp/
+# nc_am 上
+TS=$(date +%Y%m%d-%H%M%S); S=/opt/1panel/www/sites/honghong.hczhw.com
+sudo cp -a $S/proxy/download.conf $S/proxy/download.conf.bak-$TS
+sudo cp -a /opt/honghong-download/sync-version.sh /opt/honghong-download/sync-version.sh.bak-$TS
+sudo crontab -l | sudo tee /opt/honghong-download/root-crontab.bak-$TS >/dev/null
+# 1）脚本：先装新脚本并手动跑一次，确认 APK 下好、version.json 带上 localApkUrl
+sudo install -m 755 /tmp/sync-version.sh /opt/honghong-download/sync-version.sh
+sudo /opt/honghong-download/sync-version.sh
+sudo ls -l $S/download/files/*/
+sudo python3 -c "import json;d=json.load(open('$S/download/data/version.json'));print({k:v.get('localApkUrl') for k,v in d['channels'].items()})"
+# 2）nginx：先测后载，失败就恢复旧 conf
+sudo install -m 644 /tmp/download.conf $S/proxy/download.conf
+if sudo docker exec 1Panel-openresty-UXJT nginx -t; then sudo docker exec 1Panel-openresty-UXJT nginx -s reload
+else sudo cp -a $S/proxy/download.conf.bak-$TS $S/proxy/download.conf; echo "nginx -t 失败，已恢复，未 reload"; fi
+# 3）页面
+sudo rm -rf $S/download.new && sudo mkdir $S/download.new && sudo tar xzf /tmp/download-page.tgz -C $S/download.new --no-same-owner
+sudo cp -a $S/download/data $S/download.new/ && sudo cp -al $S/download/files $S/download.new/
+sudo rm -rf $S/download.prev && sudo mv $S/download $S/download.prev && sudo mv $S/download.new $S/download
+# crontab 不用改（还是同一个脚本路径）
+# 验证
+H=https://honghong.hczhw.com
+curl -sI $H/download/files/dev/honghong-0.1.19.apk | grep -iE '^HTTP|content-type|content-length|disposition'   # 200、package-archive、23401036、attachment
+curl -s -o /dev/null -w '%{http_code}\n' $H/download/files/dev/honghong-0.1.19.apk.sha256                      # 404
+curl -s $H/download/files/dev/honghong-0.1.19.apk | sha256sum                                                     # 与 version.json 的 sha256 一致
+curl -s $H/download/data/version.json | grep -c localApkUrl
+for u in /download /download/ /download/beta/ /ai/healthz /rest/v1/ /; do curl -s -o /dev/null -w "$u %{http_code}\n" $H$u; done   # 301 200 200 200 401 404
+```
+
+**二期回滚**
+```sh
+S=/opt/1panel/www/sites/honghong.hczhw.com; TS=<上面的时间戳>
+sudo cp -a $S/proxy/download.conf.bak-$TS $S/proxy/download.conf
+sudo docker exec 1Panel-openresty-UXJT nginx -t && sudo docker exec 1Panel-openresty-UXJT nginx -s reload
+sudo cp -a /opt/honghong-download/sync-version.sh.bak-$TS /opt/honghong-download/sync-version.sh
+sudo rm -rf $S/download && sudo mv $S/download.prev $S/download
+sudo /opt/honghong-download/sync-version.sh          # 用旧脚本重写 version.json，去掉 localApkUrl
+sudo rm -rf $S/download.prev/files                   # 可选：删掉已下载的 APK
+```
+页面旧版本不认识 `localApkUrl`，所以回滚后即使 version.json 里还留着它也只会继续用 GitHub 地址。

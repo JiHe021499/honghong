@@ -34,7 +34,9 @@
   }
   function fmtSize(n){ n=+n; return n>0 ? (n/1048576).toFixed(1)+' MB' : '' }
   function notesOf(cl){
-    return String(cl||'').split('\n').map(function(l){return l.replace(/^\s*[-*•]\s*/,'').trim()})
+    return String(cl||'').split('\n').map(function(l){return l.replace(/^\s*[-*•]\s*/,'')
+      // 发版工作流已去掉 feat:/fix: 等前缀；这里兼容旧版本数据
+      .replace(/^(feat|fix|tests?|chore|docs?|refactor|perf|ci|build|style|revert)(\([^)]*\))?!?[:：]\s*/i,'').trim()})
       .filter(Boolean).slice(0,8);
   }
   function pick(json){
@@ -42,7 +44,7 @@
     if(!e && json && json.channel===C.channel) e = json; // 旧格式只有顶层字段
     if(!e || !e.apkUrl || !e.versionName) return null;
     return { version:e.versionName, build:String(e.versionCode||''), date:fmtDate(e.publishedAt),
-             size:fmtSize(e.size), apkUrl:e.apkUrl, notes:notesOf(e.changelog) };
+             size:fmtSize(e.size), apkUrl:e.localApkUrl||e.apkUrl, ghUrl:e.localApkUrl?e.apkUrl:'', notes:notesOf(e.changelog) };
   }
   function load(i, done){
     var src = (CFG.sources||[])[i]; if(!src) return done(null);
@@ -75,7 +77,8 @@
       var ns = ok && D.notes.length ? D.notes : [ok ? '本次没有填写更新说明' : (KIND==='beta'?'下一次 dev 构建发布后会显示在这里':'正式版发布后，更新说明会显示在这里')];
       ul.innerHTML = ns.map(function(n){return '<li>'+esc(n)+'</li>'}).join('');
     });
-    var apk = ok ? D.apkUrl : '';
+    var apk = ok ? D.apkUrl : '', gh = ok ? D.ghUrl : '';
+    var ghLink = gh && p!=='wechat' ? '<span class="gh">下载慢？<a href="'+esc(gh)+'" download>从 GitHub 下载</a></span>' : '';
     var main=document.getElementById('main'), alt=document.getElementById('alt'), tip=document.getElementById('iostip');
     var os = p==='wechat'?wxOS:p;
     function off(el){ el.classList.add('off'); el.removeAttribute('href'); el.removeAttribute('download') }
@@ -89,7 +92,7 @@
       } else {
         main.innerHTML=ICON_A+'<span>'+(apk ? (KIND==='beta'?'下载内测版 APK':'下载安卓版') : none)+'</span>';
         if(apk){ main.href=apk; main.setAttribute('download','') } else off(main);
-        alt.innerHTML = tf ? 'iPhone 用户？<a href="'+esc(tf)+'">前往 TestFlight</a>' : 'iPhone 用户？iOS 版'+SOON;
+        alt.innerHTML = (tf ? 'iPhone 用户？<a href="'+esc(tf)+'">前往 TestFlight</a>' : 'iPhone 用户？iOS 版'+SOON) + ghLink;
         tip.textContent = apk ? '如提示「未知来源」，请在设置中允许本次安装' : '';
       }
       if(p==='wechat'){ // 微信内屏蔽直接下载
@@ -99,6 +102,7 @@
       }
     }
     $('[data-l="apk"]').forEach(function(a){ if(apk && p!=='wechat'){a.href=apk;a.style.display=''} else {a.removeAttribute('href');a.style.display='none'} });
+    $('[data-l="gh"]').forEach(function(a){ if(gh && p!=='wechat'){a.href=gh;a.style.display=''} else {a.removeAttribute('href');a.style.display='none'} });
     $('[data-l="tf"]').forEach(function(a){ if(tf){a.href=tf} else {a.removeAttribute('href');a.textContent='TestFlight '+SOON;a.classList.add('soon')} });
   }
 

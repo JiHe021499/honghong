@@ -76,3 +76,4 @@ body.is-wechat .wx{display:block}
 .sep:not(:empty)::after{content:" · "}
 .pre:not(:empty)::before{content:" · "}
 .links a.soon{opacity:.55;cursor:default;text-decoration:none}
+.alt .gh{display:block;margin-top:6px;font-size:12px;opacity:.8}
