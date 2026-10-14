@@ -1,0 +1,77 @@
+import sys
+def page(kind,pre):
+    beta=kind=='beta'
+    title='哄哄 内测版下载' if beta else '下载哄哄 · 新手爸妈的哭声翻译官'
+    meta='<meta name="robots" content="noindex,nofollow,noarchive">\n' if beta else '<meta name="description" content="哄哄：录一段宝宝哭声，结合喂奶睡觉换尿布记录，猜出原因并给出安抚建议。">\n'
+    pill='<span class="pill beta">内测版 · 请勿外传</span>' if beta else '<span class="pill">官方下载</span>'
+    notice=f'''<div class="notice"><img src="{pre}assets/tip.svg" alt=""><div><b>内部测试版本</b>：仅供团队与受邀家庭试用，功能可能不稳定、数据可能被重置。请勿转发链接，发现问题请在 App「我的 → 反馈」里告诉我们。</div></div>''' if beta else ''
+    h1='哄哄 内测版' if beta else '哄哄'
+    sub='最新 dev 构建，每次合并后自动更新' if beta else '宝宝哭了？录一段，帮你猜猜为什么'
+    vlabel='最新 dev 版本' if beta else '最新版本'
+    dh1='哄哄 <em>内测版</em><br>抢先体验新功能' if beta else '宝宝哭了，录一段<br><em>哄哄</em>帮你猜猜为什么'
+    dlead='这里是哄哄的最新开发构建。用手机扫码即可安装，iPhone 走 TestFlight，安卓直接下载 APK。' if beta else '结合喂奶、睡觉、换尿布的记录，猜出最可能的原因（饿、困、胀气……），再给你温柔的安抚建议。半夜用也不刺眼。'
+    return f'''<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+{meta}<title>{title}</title>
+<link rel="icon" href="{pre}assets/honghong-mark.svg">
+<meta name="theme-color" content="#FFF8F0">
+<link rel="stylesheet" href="{pre}assets/style.css">
+</head>
+<body data-kind="{kind}">
+<div class="bg"></div>
+<!-- ============ 移动端 ============ -->
+<main class="wrap">
+  <div class="top"><img class="lock" src="{pre}assets/honghong-lockup-light.svg" alt="哄哄">{pill}</div>
+  <section class="hero">
+    <div class="mark"><img src="{pre}assets/honghong-mark.svg" alt=""></div>
+    <h1>{h1}</h1><p>{sub}</p>
+    <div class="ver">{vlabel} <b>v<span data-f="version"></span></b> · <span data-f="date"></span></div>
+  </section>
+  {notice}
+  <a id="main" class="btn" style="margin-top:18px"></a>
+  <div class="ios-tip" id="iostip"></div>
+  <div class="alt" id="alt"></div>
+  <div class="meta"><span data-f="size"></span> · <span data-f="minOS"></span></div>
+  <div class="card"><h3><img src="{pre}assets/check_update.svg" alt="">{'本次构建' if beta else '更新说明'} · v<span data-f="version"></span></h3><ul class="notes" data-f="notes"></ul></div>
+  <div class="card qrbox"><div class="qr" data-qr="96"></div><p><b>分享给家人</b>让另一半用手机扫一扫，一起记录、一起哄。</p></div>
+  <div class="foot">© 2026 哄哄 · honghong.hczhw.com<br>一位奶爸做给新手爸妈的小工具</div>
+</main>
+<!-- ============ 桌面端：二维码为主视觉 ============ -->
+<div class="desk">
+  <div class="top"><img class="lock" src="{pre}assets/honghong-lockup-light.svg" alt="哄哄">{pill}</div>
+  <div class="dgrid">
+    <div class="dl">
+      <h1>{dh1}</h1><p class="lead">{dlead}</p>
+      <div class="feat"><span><img src="{pre}assets/cause_hungry.svg" alt="">哭声识别</span><span><img src="{pre}assets/care_feed.svg" alt="">护理计时</span><span><img src="{pre}assets/diary.svg" alt="">妈咪日记</span><span><img src="{pre}assets/night_mode.svg" alt="">夜间模式</span></div>
+      {notice}
+      <div class="card"><h3><img src="{pre}assets/check_update.svg" alt="">{'本次构建' if beta else '更新说明'} · v<span data-f="version"></span></h3><ul class="notes" data-f="notes"></ul></div>
+    </div>
+    <div class="qrhero">
+      <img class="sticker" src="{pre}assets/soothed.svg" alt="">
+      <div class="qr" data-qr="300"></div>
+      <h2>用手机扫一扫，安装哄哄</h2>
+      <p>自动识别 iPhone / 安卓 · 微信扫码后请在浏览器打开</p>
+      <div class="vline">{vlabel} <b>v<span data-f="version"></span></b> · <span data-f="date"></span> · <span data-f="size"></span></div>
+      <div class="links"><a data-l="apk" download>下载 APK</a><a data-l="tf">TestFlight 链接</a></div>
+    </div>
+  </div>
+  <div class="foot">© 2026 哄哄 · honghong.hczhw.com · <span data-f="minOS"></span></div>
+</div>
+<!-- ============ 微信内打开提示 ============ -->
+<div class="wx">
+  <svg class="arrow" viewBox="0 0 120 110" fill="none" stroke="#FFB89A" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 100 C 30 60, 60 40, 98 16"/><path d="M76 14 L100 14 L94 38"/></svg>
+  <div class="box">
+    <h2>请在浏览器中打开<br>才能下载哄哄</h2>
+    <ol><li><i>1</i><span>点击右上角 <span class="dots">···</span></span></li><li><i>2</i><span>选择「<span data-f="osname">在浏览器中打开</span>」</span></li><li><i>3</i><span>在浏览器里点「下载」即可安装</span></li></ol>
+    <div class="mark"><img src="{pre}assets/honghong-mark.svg" alt=""></div>
+    <small>微信内无法直接安装 App，这不是你的问题 🙂</small>
+  </div>
+</div>
+<script src="{pre}assets/config.js"></script>
+<script src="{pre}assets/qrcode.js"></script>
+<script src="{pre}assets/app.js"></script>
+</body></html>
+'''
+open('index.html','w').write(page('release',''))
+open('beta/index.html','w').write(page('beta','../'))

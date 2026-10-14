@@ -1,0 +1,74 @@
+:root{--cream:#FFF8F0;--peach:#FFB89A;--peach2:#FF9874;--peachL:#FFE7DB;--blue:#8FB8DE;--blueL:#E3EEF8;--ink:#3D3A45;--sub:#8A8494;--line:#F0E6DC;--brown:#5A4636}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{font-family:-apple-system,"PingFang SC","Noto Sans CJK SC","Noto Sans SC","Microsoft YaHei",sans-serif;background:var(--cream);color:var(--ink);-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+.bg{position:fixed;inset:0;z-index:-1;background:radial-gradient(600px 400px at 85% -5%,#FFE7DB 0,transparent 70%),radial-gradient(500px 380px at -10% 100%,#E3EEF8 0,transparent 70%),var(--cream)}
+.wrap{max-width:440px;margin:0 auto;padding:22px 22px 36px}
+.top{display:flex;align-items:center;justify-content:space-between}
+.top img.lock{height:40px}
+.pill{font-size:12px;padding:5px 10px;border-radius:999px;background:#fff;border:1px solid var(--line);color:var(--sub);white-space:nowrap}
+.pill.beta{background:#FFF3CC;border-color:#F1D98A;color:#8A6A12;font-weight:600}
+.hero{text-align:center;margin:26px 0 18px}
+.hero .mark{width:112px;height:112px;border-radius:28px;background:#fff;box-shadow:0 10px 30px rgba(255,152,116,.25);display:grid;place-items:center;margin:0 auto 16px}
+.hero .mark img{width:92px}
+.hero h1{font-size:26px;letter-spacing:1px}
+.hero p{color:var(--sub);font-size:15px;margin-top:6px;line-height:1.5}
+.ver{display:inline-flex;gap:8px;align-items:center;margin-top:12px;font-size:13px;color:var(--sub)}
+.ver b{color:var(--ink);font-size:14px}
+.btn{display:flex;align-items:center;justify-content:center;gap:10px;height:58px;border-radius:29px;background:var(--peach2);color:#fff;font-size:18px;font-weight:700;box-shadow:0 8px 20px rgba(255,152,116,.4);border:2px solid var(--brown)}
+.btn svg{width:22px;height:22px}
+.btn.off{background:#D9D2CB;box-shadow:none;border-color:#B9AFA6;pointer-events:none}
+.alt{text-align:center;margin-top:12px;font-size:14px;color:var(--sub)}
+.alt a{color:#4E7FAE;font-weight:600;border-bottom:1px dashed #8FB8DE}
+.meta{text-align:center;font-size:12px;color:var(--sub);margin-top:8px}
+.card{background:#fff;border-radius:20px;padding:16px 18px;margin-top:18px;box-shadow:0 2px 10px rgba(90,70,54,.06)}
+.card h3{font-size:15px;display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.card h3 img{width:24px}
+.notes li{list-style:none;position:relative;padding-left:18px;font-size:14px;line-height:1.55;margin:6px 0}
+.notes li:before{content:"";position:absolute;left:3px;top:8px;width:7px;height:7px;border-radius:50%;background:var(--peach)}
+.qrbox{display:flex;align-items:center;gap:14px}
+.qr{background:#fff;border-radius:16px;border:2px solid var(--brown);padding:8px;line-height:0}
+.qr svg{display:block}
+.qrbox p{font-size:13px;color:var(--sub);line-height:1.5}
+.qrbox p b{color:var(--ink);font-size:14px;display:block;margin-bottom:2px}
+.notice{background:#FFF3CC;border:1px solid #F1D98A;border-radius:16px;padding:12px 14px;font-size:13px;line-height:1.55;color:#6B5310;margin-top:16px;display:flex;gap:8px}
+.notice img{width:22px;flex:none}
+.foot{text-align:center;color:var(--sub);font-size:12px;margin-top:26px;line-height:1.7}
+.ios-tip{font-size:12px;color:var(--sub);text-align:center;margin-top:6px}
+/* desktop */
+.desk{display:none}
+body.is-desktop .wrap{display:none}
+body.is-desktop .desk{display:block}
+.desk{max-width:1120px;margin:0 auto;padding:36px 48px}
+.desk .top img.lock{height:48px}
+.dgrid{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center;margin-top:44px}
+.dl h1{font-size:40px;line-height:1.25;letter-spacing:1px}
+.dl h1 em{font-style:normal;color:var(--peach2)}
+.dl .lead{font-size:18px;color:var(--sub);margin:16px 0 24px;line-height:1.6}
+.feat{display:flex;gap:12px;flex-wrap:wrap}
+.feat span{display:flex;align-items:center;gap:6px;background:#fff;border-radius:999px;padding:8px 14px 8px 8px;font-size:14px;box-shadow:0 2px 8px rgba(90,70,54,.06)}
+.feat img{width:28px}
+.dl .card{max-width:520px;margin-top:28px}
+.qrhero{background:#fff;border-radius:32px;padding:34px 34px 26px;text-align:center;box-shadow:0 20px 60px rgba(255,152,116,.22);border:2px solid var(--brown);position:relative}
+.qrhero .qr{border:none;padding:0;display:inline-block}
+.qrhero h2{font-size:24px;margin-top:16px}
+.qrhero p{color:var(--sub);font-size:14px;margin-top:6px}
+.qrhero .vline{margin-top:14px;font-size:13px;white-space:nowrap}
+.qrhero .vline b{font-size:16px}
+.qrhero .links{display:flex;gap:12px;justify-content:center;margin-top:18px}
+.qrhero .links a{font-size:14px;padding:9px 16px;border-radius:999px;background:var(--cream);border:1px solid var(--line)}
+.sticker{position:absolute;width:86px;top:-36px;right:-28px;transform:rotate(10deg)}
+/* wechat overlay */
+.wx{display:none;position:fixed;inset:0;z-index:99;background:rgba(43,40,48,.95);color:#fff}
+body.is-wechat .wx{display:block}
+.wx .arrow{position:absolute;top:8px;right:18px;width:120px}
+.wx .box{position:absolute;top:150px;left:28px;right:28px;text-align:center}
+.wx h2{font-size:22px;line-height:1.5}
+.wx ol{text-align:left;margin:22px auto 0;max-width:290px;font-size:16px;line-height:1.6;counter-reset:s}
+.wx li{list-style:none;display:flex;gap:10px;align-items:flex-start;margin:12px 0}
+.wx li i{flex:none;width:26px;height:26px;border-radius:50%;background:var(--peach2);font-style:normal;font-weight:700;display:grid;place-items:center;font-size:14px;margin-top:1px}
+.wx .dots{display:inline-block;background:#fff;color:#333;border-radius:6px;padding:0 6px;font-weight:700;letter-spacing:1px}
+.wx .mark{width:84px;margin:30px auto 0;background:#fff;border-radius:22px;padding:8px}
+.wx .mark img{width:100%}
+.wx small{display:block;opacity:.7;margin-top:10px;font-size:13px}
