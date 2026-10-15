@@ -42,3 +42,11 @@ DEEPSEEK_API_KEY=... npm run eval -- --out /tmp/results.json
 结果见 `eval/REPORT.md`。
 
 状态码：400 参数错误；401 鉴权失败；429 限流；502 上游超时/错误或两次 schema 不合规（`{status:"failed", error}`，客户端按屏 14 兜底）；503 未配置 Key。
+
+## 日志与探测（日志方案 P0）
+- 每行日志都是 JSON，统一字段：`ts`、`level`、`svc=ai-gateway`、`request_id`、`route`、`code`、`ms`；失败时有 `err_code`，未预期异常还有 `err_name`、`err_at`（只记类型和代码位置，不记 message）。
+- `x-request-id`：客户端传了合法的（`[0-9A-Za-z-]{8,64}`）就沿用，否则网关生成一个；HTTP 响应和 WS 握手响应都会回写。
+- `POST /client-events`：App 在用户同意后上报的失败事件（需要 JWT，`LIMIT_CLIENT_EVENTS_PER_DAY` 限流，默认 200 批/天）。只接受白名单字段，见 `src/client_events.js`。
+- `PROBE_SUBS`：合成探测账号的 sub（逗号分隔），走单独限流桶 `LIMIT_PROBE_PER_DAY`（默认 600），日志带 `probe=true`。
+- 合成探测：`eval/probe.js`，部署和告警见 `docs/ops/asr-probe.md`。
+- `docker-compose.yml` 配了 json-file 日志轮转（20MB × 5）。

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:record/record.dart';
+import 'package:uuid/uuid.dart';
 
 import 'voice_capture.dart';
 
@@ -37,8 +38,8 @@ abstract class AsrSocket {
 class IoAsrSocket implements AsrSocket {
   IoAsrSocket(this._ws);
   final WebSocket _ws;
-  static Future<AsrSocket> connect(Uri url, String jwt) async =>
-      IoAsrSocket(await WebSocket.connect(url.toString(), headers: {'authorization': 'Bearer $jwt'}).timeout(const Duration(seconds: 5)));
+  static Future<AsrSocket> connect(Uri url, String jwt, {String? requestId}) async => IoAsrSocket(await WebSocket.connect(url.toString(),
+          headers: {'authorization': 'Bearer $jwt', 'x-request-id': ?requestId}).timeout(const Duration(seconds: 5)));
   @override
   Stream<dynamic> get messages => _ws;
   @override
@@ -59,7 +60,8 @@ class CloudVoiceCapture implements VoiceCapture {
   CloudVoiceCapture({required this.connect, required this.token, PcmSource? source, this.finalTimeout = const Duration(seconds: 6)})
       : source = source ?? MicPcmSource();
 
-  final Future<AsrSocket> Function(String jwt) connect;
+  /// 连接网关；[requestId] 作为 x-request-id 头传给网关，网关日志里是同一个 id
+  final Future<AsrSocket> Function(String jwt, String requestId) connect;
   final Future<String> Function() token;
   final PcmSource source;
   final Duration finalTimeout;
@@ -70,21 +72,59 @@ class CloudVoiceCapture implements VoiceCapture {
   Completer<String>? _final;
   String _text = '';
   bool _failed = false;
+  String? _code;
+  String? _rid;
 
   @override
   bool get failed => _failed;
 
   @override
+  String? get errorCode => _code;
+
+  @override
+  String? get requestId => _rid;
+
+  void _fail(String code) {
+    _failed = true;
+    _code ??= code;
+  }
+
+  /// 连接/握手异常 → 错误码（不含异常 message）
+  static String classify(Object e) => switch (e) {
+        TimeoutException() => 'ws_connect_timeout',
+        WebSocketException() => 'ws_handshake_rejected',
+        SocketException() => 'network',
+        HandshakeException() => 'tls_handshake',
+        HttpException() => 'ws_http_error',
+        _ => errCode('ws_${e.runtimeType}'),
+      };
+
+  @override
   Future<bool> start({required void Function(String partial) onPartial, void Function(double level)? onLevel}) async {
     _text = '';
     _failed = false;
+    _code = null;
+    _rid = const Uuid().v4();
     _final = Completer<String>();
     try {
       if (!await source.hasPermission()) {
-        _failed = true;
+        _fail('perm_denied');
         return false;
       }
-      final ws = _ws = await connect(await token());
+      final String jwt;
+      try {
+        jwt = await token();
+      } catch (_) {
+        _fail('token_failed');
+        return false;
+      }
+      final AsrSocket ws;
+      try {
+        ws = _ws = await connect(jwt, _rid!);
+      } catch (e) {
+        _fail(classify(e));
+        return false;
+      }
       _sub = ws.messages.listen((m) {
         if (m is! String) return;
         final j = jsonDecode(m);
@@ -97,20 +137,28 @@ class CloudVoiceCapture implements VoiceCapture {
             _text = (j['text'] as String?) ?? _text;
             if (!_final!.isCompleted) _final!.complete(_text);
           case 'error':
-            _failed = true;
+            final reason = j['error'];
+            _fail(errCode('asr_error_${reason is String ? reason : 'unknown'}'));
             if (!_final!.isCompleted) _final!.complete('');
         }
       }, onDone: () {
         if (!_final!.isCompleted) _final!.complete(_text);
       }, onError: (_) {
-        _failed = true;
+        _fail('ws_dropped');
         if (!_final!.isCompleted) _final!.complete('');
       });
-      final pcm = await source.start();
+      final Stream<Uint8List> pcm;
+      try {
+        pcm = await source.start();
+      } catch (_) {
+        _fail('mic_start_failed');
+        await _teardown();
+        return false;
+      }
       _mic = pcm.listen((chunk) => _ws?.add(chunk));
       return true;
-    } catch (_) {
-      _failed = true;
+    } catch (e) {
+      _fail(errCode('start_${e.runtimeType}'));
       await _teardown();
       return false;
     }
@@ -123,10 +171,12 @@ class CloudVoiceCapture implements VoiceCapture {
     await source.stop();
     _ws?.add(jsonEncode({'type': 'end'}));
     final f = _final;
-    final text = f == null ? '' : await f.future.timeout(finalTimeout, onTimeout: () {
-      _failed = true;
-      return '';
-    });
+    final text = f == null
+        ? ''
+        : await f.future.timeout(finalTimeout, onTimeout: () {
+            _fail('final_timeout');
+            return '';
+          });
     await _teardown();
     return text.trim();
   }

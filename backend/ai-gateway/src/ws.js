@@ -130,20 +130,20 @@ export class WsConn extends EventEmitter {
 }
 
 /** 服务端：接受 HTTP upgrade。调用前应已完成鉴权等检查。 */
-export function acceptUpgrade(req, socket, head) {
+export function acceptUpgrade(req, socket, head, extraHeaders = []) {
   const key = req.headers['sec-websocket-key'];
   if (!key || (req.headers.upgrade ?? '').toLowerCase() !== 'websocket' || req.headers['sec-websocket-version'] !== '13') {
     rejectUpgrade(socket, 400, { error: 'bad_upgrade' });
     return null;
   }
-  socket.write(['HTTP/1.1 101 Switching Protocols', 'Upgrade: websocket', 'Connection: Upgrade', `Sec-WebSocket-Accept: ${acceptKey(key)}`, '', ''].join('\r\n'));
+  socket.write(['HTTP/1.1 101 Switching Protocols', 'Upgrade: websocket', 'Connection: Upgrade', `Sec-WebSocket-Accept: ${acceptKey(key)}`, ...extraHeaders, '', ''].join('\r\n'));
   return new WsConn(socket, { head });
 }
 
 const REASONS = { 400: 'Bad Request', 401: 'Unauthorized', 404: 'Not Found', 429: 'Too Many Requests', 500: 'Internal Server Error', 503: 'Service Unavailable' };
-export function rejectUpgrade(socket, code, body) {
+export function rejectUpgrade(socket, code, body, extraHeaders = []) {
   const s = JSON.stringify(body);
-  socket.end([`HTTP/1.1 ${code} ${REASONS[code] ?? 'Error'}`, 'Content-Type: application/json; charset=utf-8', `Content-Length: ${Buffer.byteLength(s)}`, 'Connection: close', '', s].join('\r\n'));
+  socket.end([`HTTP/1.1 ${code} ${REASONS[code] ?? 'Error'}`, 'Content-Type: application/json; charset=utf-8', `Content-Length: ${Buffer.byteLength(s)}`, 'Connection: close', ...extraHeaders, '', s].join('\r\n'));
 }
 
 /** 客户端：连接 ws:// 或 wss://。握手失败时 reject 的 Error 带 status 与 body。 */

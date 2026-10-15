@@ -15,6 +15,18 @@ abstract class VoiceCapture {
 
   /// 上一次是识别引擎本身出错/不可用（而不是没说话）。为 true 时走联网识别兜底。
   bool get failed;
+
+  /// 上一次失败的分类码（[a-z0-9_]，不含任何用户内容），用于失败统计上报
+  String? get errorCode;
+
+  /// 上一次会话的 request id（联网识别时与网关日志对应）
+  String? get requestId => null;
+}
+
+/// 把引擎给的错误名规整成安全的错误码：小写、只留 [a-z0-9_]、最长 48
+String errCode(String s) {
+  final c = s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9_]+'), '_').replaceAll(RegExp(r'_+'), '_');
+  return c.length > 48 ? c.substring(0, 48) : c;
 }
 
 class SystemVoiceCapture implements VoiceCapture {
@@ -26,15 +38,28 @@ class SystemVoiceCapture implements VoiceCapture {
   String _text = '';
   bool _ready = false;
   bool _error = false;
+  String? _code;
+
+  @override
+  String? get errorCode => _code;
+
+  @override
+  String? get requestId => null;
 
   @override
   Future<bool> start({required void Function(String partial) onPartial, void Function(double level)? onLevel}) async {
     _text = '';
     _error = false;
+    _code = null;
     try {
-      _ready = _ready || await _stt.initialize(onError: (SpeechRecognitionError e) => _error = true);
+      _ready = _ready ||
+          await _stt.initialize(onError: (SpeechRecognitionError e) {
+            _error = true;
+            _code = errCode('system_${e.errorMsg}'); // 例如 system_error_no_match / system_error_language_unavailable
+          });
       if (!_ready) {
         _error = true;
+        _code = 'system_unavailable';
         return false;
       }
       await _stt.listen(
@@ -53,8 +78,9 @@ class SystemVoiceCapture implements VoiceCapture {
         ),
       );
       return true;
-    } catch (_) {
+    } catch (e) {
       _error = true;
+      _code = errCode('system_${e.runtimeType}');
       return false;
     }
   }

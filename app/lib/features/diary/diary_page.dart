@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/log/client_events.dart';
 import '../../core/prefs.dart';
 import '../../core/providers.dart';
 import '../../core/router/app_router.dart';
@@ -104,6 +105,7 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
       if (mounted) setState(() => live = t);
     });
     _starting = false;
+    if (!ok) _report(cap, 'voice.asr.start', 'fail');
     if (!ok && mounted) {
       _reset();
       _metric(DiaryMetric.voice);
@@ -138,6 +140,8 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
     }
     setState(() => mic = MicState.processing);
     final text = await voice.stop();
+    _report(voice, 'voice.asr.end', text.isEmpty ? 'fail' : 'ok',
+        errCode: text.isEmpty ? (voice.errorCode ?? 'empty_result') : null, chars: text.characters.length, ms: held.inMilliseconds);
     _metric(DiaryMetric.voice);
     if (text.isEmpty) _metric(DiaryMetric.voiceFail);
     if (!mounted) return;
@@ -147,6 +151,21 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
     }
     setState(() => live = text);
     await _process(text, 'voice');
+  }
+
+  /// 失败分类上报（用户同意后才会真的发；只有引擎、结果、错误码、时长、字数，不含任何内容）
+  void _report(VoiceCapture cap, String event, String? outcome, {String? errCode, int? chars, int? ms}) {
+    final cloud = ref.read(cloudVoiceCaptureProvider);
+    ref.read(clientEventsReporterProvider).report(ClientEvent(
+          event,
+          outcome: outcome,
+          engine: identical(cap, cloud) ? 'cloud' : 'system',
+          errCode: errCode ?? (outcome == 'fail' ? cap.errorCode : null),
+          chars: chars,
+          ms: ms,
+          requestId: cap.requestId,
+          consentCloud: _consent,
+        ));
   }
 
   void _metric(DiaryMetric m) => ref.read(diaryMetricsProvider).add(m);
@@ -164,6 +183,7 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
   Future<void> _recognizerFailed(VoiceCapture cap) async {
     final cloud = ref.read(cloudVoiceCaptureProvider);
     if (identical(cap, cloud) || cloud == null) return _voiceFailed();
+    if (_consent != false) _report(cap, 'voice.fallback_to_cloud', null);
     final firstSwitch = !_systemBroken;
     _systemBroken = true;
     ref.read(systemAsrBrokenProvider.notifier).mark();

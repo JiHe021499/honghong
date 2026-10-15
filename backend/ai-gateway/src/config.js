@@ -10,6 +10,8 @@ export function loadConfig(env = process.env) {
       'diary-parse': Number(env.LIMIT_PARSE_PER_DAY ?? 60),
       'diary-summary': Number(env.LIMIT_SUMMARY_PER_DAY ?? 3),
       'diary-asr': Number(env.LIMIT_ASR_PER_DAY ?? 60), // 联网识别：每人每天 60 次（北京时间分日）
+      'diary-asr-probe': Number(env.LIMIT_PROBE_PER_DAY ?? 600), // 合成探测账号单独限流桶（每 5 分钟一次 = 288/天）
+      'client-events': Number(env.LIMIT_CLIENT_EVENTS_PER_DAY ?? 200), // App 失败事件上报批次（每批最多 20 条）
     },
     // 讯飞语音听写（流式版）：本机识别不可用时的联网兜底（D9 修订）。三项都有才算配置好，否则 /diary-asr 返回 503。
     xfyun: {
@@ -30,6 +32,8 @@ export function loadConfig(env = process.env) {
     },
     idempotencyTtlMs: 24 * 3600 * 1000,
   };
+  // 合成探测账号的 sub（逗号分隔）：走单独限流桶，日志带 probe=true，便于从统计里排除
+  cfg.probeSubs = new Set((env.PROBE_SUBS ?? '').split(',').map((x) => x.trim()).filter(Boolean));
   cfg.xfyun.configured = Boolean(cfg.xfyun.appId && cfg.xfyun.apiKey && cfg.xfyun.apiSecret);
   return cfg;
 }

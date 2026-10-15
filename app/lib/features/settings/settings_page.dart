@@ -14,6 +14,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/hh_widgets.dart';
 import '../../services/cloud/cloud_providers.dart';
+import '../../core/log/client_events.dart';
 import '../diary/diary_providers.dart' show cloudAsrConsentProvider, diaryMetricsProvider;
 import '../diary/diary_sheets.dart' show diaryDisclaimer;
 import '../../services/lockscreen/lockscreen_controller.dart';
@@ -292,6 +293,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   key: const Key('cloud-asr-switch'),
                   value: cloudAsr,
                   onChanged: (v) => ref.read(cloudAsrConsentProvider.notifier).set(v),
+                ),
+              ),
+              tile(
+                '匿名错误统计',
+                key: const Key('client-events'),
+                icon: AppIcon.tip,
+                sub: '按住说话失败时，把失败类型（如没有麦克风权限、连不上网关）发给我们排查。不含录音、识别出的文字、日记内容和宝宝信息。默认关闭',
+                trailing: Switch(
+                  key: const Key('client-events-switch'),
+                  value: ref.watch(clientEventsConsentProvider),
+                  onChanged: (v) => ref.read(clientEventsConsentProvider.notifier).set(v),
                 ),
               ),
               if (Platform.isIOS)
