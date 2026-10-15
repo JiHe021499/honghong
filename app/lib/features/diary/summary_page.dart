@@ -34,7 +34,7 @@ class SummaryPage extends ConsumerWidget {
     final isToday = day == DateTime(n.year, n.month, n.day);
     final s = ref.watch(summaryRowProvider(day));
     final row = s.value;
-    final sub = c.night ? _nightSub : c.sub;
+    final sub = c.dn(c.sub, _nightSub);
     void goDay() => context.push('${Routes.diaryDay}?date=${DateFormat('yyyy-MM-dd').format(day)}');
     final body = <Widget>[
       DiaryHeader(title: isToday ? '今日小结' : '${day.month} 月 ${day.day} 日小结', onBack: () => context.canPop() ? context.pop() : context.go(Routes.diary)),
@@ -135,8 +135,8 @@ class _Moon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.hh;
-    final inner = c.night ? const Color(0xFF2A1814) : const Color(0xFFFFE7DB);
-    final outer = c.night ? const Color(0x00120C0C) : const Color(0x00FFE7DB);
+    final inner = c.dn(const Color(0xFFFFE7DB), const Color(0xFF2A1814));
+    final outer = c.dn(const Color(0x00FFE7DB), const Color(0x00120C0C));
     return Center(
       child: Container(
         margin: const EdgeInsets.only(top: 24, bottom: 8),
@@ -158,7 +158,7 @@ class _Big extends StatelessWidget {
     final c = context.hh;
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 14, 4, 20),
-      child: Text(text, textAlign: TextAlign.center, style: TextStyle(fontSize: 21, height: 1.6, fontWeight: FontWeight.w700, color: c.night ? _nightInk : c.ink)),
+      child: Text(text, textAlign: TextAlign.center, style: TextStyle(fontSize: 21, height: 1.6, fontWeight: FontWeight.w700, color: c.dn(c.ink, _nightInk))),
     );
   }
 }
@@ -180,15 +180,15 @@ class _Facts extends StatelessWidget {
                   key: Key('fact-$i'),
                   padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
                   decoration: BoxDecoration(
-                    color: c.night ? const Color(0xFF1F1210) : c.card,
+                    color: c.dn(c.card, const Color(0xFF1F1210)),
                     borderRadius: BorderRadius.circular(16),
-                    boxShadow: c.night ? null : const [BoxShadow(color: Color(0x0FA0785A), blurRadius: 10, offset: Offset(0, 3))],
+                    boxShadow: c.dnShadows(const [BoxShadow(color: Color(0x0FA0785A), blurRadius: 10, offset: Offset(0, 3))], null),
                   ),
                   child: Column(children: [
                     HhIcon(facts[i].icon, size: 28),
                     const SizedBox(height: 4),
-                    Text(facts[i].value, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: c.night ? _nightInk : c.ink)),
-                    Text(facts[i].label, style: TextStyle(fontSize: 11, color: c.night ? _nightSub : c.sub)),
+                    Text(facts[i].value, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: c.dn(c.ink, _nightInk))),
+                    Text(facts[i].label, style: TextStyle(fontSize: 11, color: c.dn(c.sub, _nightSub))),
                   ]),
                 ),
         ),

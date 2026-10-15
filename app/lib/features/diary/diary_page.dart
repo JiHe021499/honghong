@@ -285,7 +285,7 @@ class _MicArea extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: c.night ? c.peachL : const Color(0xFFF8E6E0),
+            color: c.dn(const Color(0xFFF8E6E0), c.peachL),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: const Color(0xFFE0A08E), width: 1.5),
           ),
@@ -313,7 +313,7 @@ class _MicArea extends StatelessWidget {
       MicState.processing => '整理中',
     };
     final size = big ? 200.0 : 150.0;
-    final ring = c.night ? const Color(0xFFA03228) : c.peach2;
+    final ring = c.ring;
     final button = Listener(
       key: const Key('diary-mic'),
       onPointerDown: (e) => onDown(e.position),
@@ -326,12 +326,12 @@ class _MicArea extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: gray ? (c.night ? c.card : const Color(0xFFE6DDD3)) : null,
+          color: gray ? c.dn(const Color(0xFFE6DDD3), c.card) : null,
           gradient: gray ? null : RadialGradient(center: const Alignment(-.3, -.4), radius: .9, colors: [c.cryFrom, c.cryTo]),
           boxShadow: gray
               ? null
               : [
-                  if (!c.night && big) const BoxShadow(color: Color(0x59FF7850), blurRadius: 30, offset: Offset(0, 14)),
+                  if (big) BoxShadow(color: c.dn(const Color(0x59FF7850), const Color(0x00FF7850)), blurRadius: 30, offset: const Offset(0, 14)),
                   BoxShadow(color: ring.withValues(alpha: big ? .08 : .1), spreadRadius: big ? 32 : 44),
                   BoxShadow(color: ring.withValues(alpha: big ? .15 : .22), spreadRadius: big ? 16 : 22),
                 ],
@@ -339,7 +339,7 @@ class _MicArea extends StatelessWidget {
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           Container(
             padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(color: c.night ? const Color(0xFF2A1814) : const Color(0xFFFFF8F0), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: c.dn(const Color(0xFFFFF8F0), const Color(0xFF2A1814)), shape: BoxShape.circle),
             child: HhIcon(AppIcon.voice, size: big ? 40 : 36),
           ),
           const SizedBox(height: 6),

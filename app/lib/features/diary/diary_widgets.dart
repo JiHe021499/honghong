@@ -20,7 +20,7 @@ class DiaryHeader extends StatelessWidget {
       height: 52,
       child: Stack(alignment: Alignment.center, children: [
         Align(alignment: Alignment.centerLeft, child: CircleBack(key: const Key('diary-back'), onTap: onBack)),
-        Text(title, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: c.night ? c.peachDeep : c.ink)),
+        Text(title, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: c.dn(c.ink, c.peachDeep))),
       ]),
     );
   }
@@ -29,8 +29,7 @@ class DiaryHeader extends StatelessWidget {
 /// 分类图标与底色（设计稿 CAT）
 ({AppIcon icon, Color bg}) categoryStyle(BuildContext context, DiaryCategory cat) {
   final c = context.hh;
-  if (c.night) return (icon: _icons[cat]!, bg: c.peachL);
-  return (icon: _icons[cat]!, bg: _bgs[cat]!);
+  return (icon: _icons[cat]!, bg: c.dn(_bgs[cat]!, c.peachL));
 }
 
 const _icons = {
@@ -89,7 +88,7 @@ class DiaryWarn extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(color: blue ? c.blueL : (c.night ? c.peachL : markBg), borderRadius: BorderRadius.circular(14)),
+      decoration: BoxDecoration(color: blue ? c.blueL : c.dn(markBg, c.peachL), borderRadius: BorderRadius.circular(14)),
       child: Row(children: [
         HhIcon(blue ? AppIcon.tip : AppIcon.signalError, size: 22),
         const SizedBox(width: 10),
@@ -99,7 +98,7 @@ class DiaryWarn extends StatelessWidget {
                   fontSize: 13,
                   height: 1.55,
                   fontWeight: blue ? FontWeight.w700 : FontWeight.w400,
-                  color: blue ? (c.night ? c.blueInk : const Color(0xFF3F6A94)) : (c.night ? c.ink : const Color(0xFF7A5A20)))),
+                  color: blue ? c.dn(const Color(0xFF3F6A94), c.blueInk) : c.dn(const Color(0xFF7A5A20), c.ink))),
         ),
       ]),
     );

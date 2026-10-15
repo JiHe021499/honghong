@@ -277,8 +277,7 @@ class _SummaryCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        gradient: c.night ? null : const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFFE7DB), Color(0xFFFFF1E8)]),
-        color: c.night ? const Color(0xFF24130F) : null,
+        gradient: c.dnFill(const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFFE7DB), Color(0xFFFFF1E8)]), const Color(0xFF24130F)),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(children: [
@@ -286,10 +285,10 @@ class _SummaryCard extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('今日小结$at', style: TextStyle(fontSize: 12, color: c.night ? const Color(0xFF8A4A42) : c.sub)),
+            Text('今日小结$at', style: TextStyle(fontSize: 12, color: c.dn(c.sub, const Color(0xFF8A4A42)))),
             const SizedBox(height: 2),
             Text(summary.content ?? '',
-                style: TextStyle(fontSize: 14, height: 1.55, fontWeight: FontWeight.w700, color: c.night ? const Color(0xFFE07A67) : c.ink)),
+                style: TextStyle(fontSize: 14, height: 1.55, fontWeight: FontWeight.w700, color: c.dn(c.ink, const Color(0xFFE07A67)))),
           ]),
         ),
       ]),
@@ -323,8 +322,7 @@ class _RetryCardState extends State<_RetryCard> {
         margin: const EdgeInsets.only(bottom: 14),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          gradient: c.night ? null : const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFFE7DB), Color(0xFFFFF1E8)]),
-          color: c.night ? const Color(0xFF24130F) : null,
+          gradient: c.dnFill(const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFFE7DB), Color(0xFFFFF1E8)]), const Color(0xFF24130F)),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(children: [
@@ -332,7 +330,7 @@ class _RetryCardState extends State<_RetryCard> {
           const SizedBox(width: 12),
           Expanded(
             child: Text(_busy ? '正在重新整理…' : '小结暂时没生成好，点此重试',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: c.night ? const Color(0xFFE07A67) : c.ink)),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: c.dn(c.ink, const Color(0xFFE07A67)))),
           ),
         ]),
       ),

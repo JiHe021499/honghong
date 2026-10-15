@@ -139,7 +139,7 @@ class _DiaryCardSheetState extends State<DiaryCardSheet> {
               width: 48,
               height: 48,
               alignment: Alignment.center,
-              decoration: BoxDecoration(color: h.night ? h.peachL : const Color(0xFFFFE7DB), borderRadius: BorderRadius.circular(16)),
+              decoration: BoxDecoration(color: h.dn(const Color(0xFFFFE7DB), h.peachL), borderRadius: BorderRadius.circular(16)),
               child: HhIcon(st.icon, size: 30),
             ),
             const SizedBox(width: 12),
