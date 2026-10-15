@@ -116,9 +116,7 @@ class HhButton extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          boxShadow: primary && !c.night
-              ? const [BoxShadow(color: Color(0x47FF7850), blurRadius: 18, offset: Offset(0, 6))]
-              : null,
+          boxShadow: primary ? c.dnShadows(const [BoxShadow(color: Color(0x47FF7850), blurRadius: 18, offset: Offset(0, 6))], null) : null,
         ),
         child: TextButton(
           onPressed: onPressed,

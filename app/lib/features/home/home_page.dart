@@ -151,6 +151,8 @@ class _Header extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.hh;
+    // 用开关状态本身驱动图标，与整页主题插值同时开始（c.night 要到动画过半才翻转）
+    final nightOn = ref.watch(nightModeProvider);
     final baby = ref.watch(currentBabyProvider).value;
     final days = baby == null ? null : AppClock.now().difference(DateUtils.dateOnly(baby.birthDate)).inDays;
     return Padding(
@@ -161,7 +163,7 @@ class _Header extends ConsumerWidget {
             width: 40,
             height: 40,
             alignment: Alignment.center,
-            decoration: BoxDecoration(color: c.night ? c.card : c.peachL, shape: BoxShape.circle),
+            decoration: BoxDecoration(color: c.dn(c.peachL, c.card), shape: BoxShape.circle),
             child: const HhIcon(AppIcon.avatarBaby, size: 30),
           ),
           const SizedBox(width: 10),
@@ -171,7 +173,7 @@ class _Header extends ConsumerWidget {
               children: [
                 Text(
                   baby?.nickname ?? '',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: c.night ? c.peachDeep : c.ink),
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: c.dn(c.ink, c.peachDeep)),
                 ),
                 Text(c.night ? '夜间模式 · 亮度已调低' : (days == null ? '' : '出生第 $days 天'), style: TextStyle(fontSize: 12, color: c.sub)),
               ],
@@ -179,7 +181,7 @@ class _Header extends ConsumerWidget {
           ),
           Semantics(
             button: true,
-            toggled: c.night,
+            toggled: nightOn,
             label: '夜间模式',
             excludeSemantics: true,
             child: GestureDetector(
@@ -190,11 +192,11 @@ class _Header extends ConsumerWidget {
                 height: 38,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: c.night ? c.card : Colors.white,
+                  color: c.dn(Colors.white, c.card),
                   shape: BoxShape.circle,
-                  boxShadow: c.night ? null : const [BoxShadow(color: Color(0x0D000000), blurRadius: 8, offset: Offset(0, 2))],
+                  boxShadow: c.dnShadows(const [BoxShadow(color: Color(0x0D000000), blurRadius: 8, offset: Offset(0, 2))], null),
                 ),
-                child: _NightIcon(night: c.night),
+                child: _NightIcon(night: nightOn),
               ),
             ),
           ),
@@ -258,7 +260,7 @@ class _StatusBarBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.hh;
-    final emStyle = TextStyle(fontWeight: FontWeight.w700, color: active.isEmpty ? c.blueInk : (c.night ? c.peachDeep : c.peach2));
+    final emStyle = TextStyle(fontWeight: FontWeight.w700, color: active.isEmpty ? c.blueInk : c.dn(c.peach2, c.peachDeep));
     final base = TextStyle(fontSize: 14, color: c.statusInk, height: 1.3);
 
     if (active.isNotEmpty) {
@@ -267,10 +269,9 @@ class _StatusBarBody extends ConsumerWidget {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         decoration: BoxDecoration(
-          gradient: c.night ? null : const LinearGradient(colors: [Color(0xFFFFE7DB), Color(0xFFFFF1E8)]),
-          color: c.night ? c.statusBg : null,
+          gradient: c.statusGradient,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: c.night ? const Color(0xFF4A221C) : const Color(0x59FF9874)),
+          border: Border.all(color: c.dn(const Color(0x59FF9874), const Color(0xFF4A221C))),
         ),
         child: Row(
           children: [
@@ -403,8 +404,8 @@ class _CryButtonState extends State<_CryButton> with SingleTickerProviderStateMi
   @override
   Widget build(BuildContext context) {
     final c = context.hh;
-    final size = c.night ? 230.0 : 200.0;
-    final ring = c.night ? const Color(0xFFA03228) : c.peach2;
+    final size = c.dnd(200, 230);
+    final ring = c.ring;
     final face = Container(
       width: size,
       height: size,
@@ -413,10 +414,10 @@ class _CryButtonState extends State<_CryButton> with SingleTickerProviderStateMi
         gradient: RadialGradient(center: const Alignment(-.3, -.4), radius: .9, colors: [c.cryFrom, c.cryTo]),
         // 投影固定，不逐帧改 blur
         boxShadow: [
-          if (!c.night) const BoxShadow(color: Color(0x59FF7850), blurRadius: 30, offset: Offset(0, 14)),
+          BoxShadow(color: c.dn(const Color(0x59FF7850), const Color(0x00FF7850)), blurRadius: 30, offset: const Offset(0, 14)),
           BoxShadow(
-            color: ring.withValues(alpha: c.night ? .06 : .08),
-            spreadRadius: c.night ? 36 : 32,
+            color: ring.withValues(alpha: c.dnd(.08, .06)),
+            spreadRadius: c.dnd(32, 36),
           ),
         ],
       ),
@@ -466,7 +467,7 @@ class _CryButtonState extends State<_CryButton> with SingleTickerProviderStateMi
             child: face,
           );
     return Padding(
-      padding: EdgeInsets.only(top: c.night ? 44 : 38, bottom: c.night ? 40 : 0),
+      padding: EdgeInsets.only(top: c.dnd(38, 44), bottom: c.dnd(0, 40)),
       child: Center(
         child: Semantics(
           button: true,
@@ -596,7 +597,7 @@ class _QuickGrid extends StatelessWidget {
 
   Widget _grid(BuildContext context) {
     final c = context.hh;
-    final gap = SizedBox(width: c.night ? 12 : 10);
+    final gap = SizedBox(width: c.dnd(10, 12));
     final activeTypes = {for (final l in active) CareLogType.values.byName(l.type)};
 
     Widget plain(CareLogType t, {bool muted = false}) {
@@ -610,11 +611,11 @@ class _QuickGrid extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            HhIcon(t.icon, size: c.night ? 36 : 34),
+            HhIcon(t.icon, size: c.dnd(34, 36)),
             const SizedBox(height: 4),
             Text(
               done ? '已记' : t.label,
-              style: TextStyle(fontSize: c.night ? 16 : 13, fontWeight: FontWeight.w600, color: c.night ? c.ink : c.ink),
+              style: TextStyle(fontSize: c.dnd(13, 16), fontWeight: FontWeight.w600, color: c.ink),
             ),
           ],
         ),
@@ -632,10 +633,7 @@ class _QuickGrid extends StatelessWidget {
               child: _QBox(
                 key: Key('running-${t.name}'),
                 onTap: () => onEnd(log),
-                gradient: c.night
-                    ? null
-                    : const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFFFFF4EE), Color(0xFFFFE7DB)]),
-                color: c.night ? c.runBg : null,
+                gradient: c.runGradient,
                 border: c.runBorder,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -652,7 +650,7 @@ class _QuickGrid extends StatelessWidget {
                     const SizedBox(height: 4),
                     _Ticker(
                       since: log.startedAt,
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: c.night ? const Color(0xFFF0C0B4) : c.ink),
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: c.dn(c.ink, const Color(0xFFF0C0B4))),
                     ),
                   ],
                 ),
@@ -666,7 +664,7 @@ class _QuickGrid extends StatelessWidget {
                 onTap: () => onEnd(log),
                 color: c.endBg,
                 border: c.endBg,
-                shadow: !c.night,
+                shadow: true,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -734,7 +732,7 @@ class _QBox extends StatelessWidget {
           child: AnimatedContainer(
             duration: _reduceMotion(context) ? Duration.zero : const Duration(milliseconds: 200),
             curve: Curves.easeOut,
-            constraints: BoxConstraints(minHeight: c.night ? 116 : 96),
+            constraints: BoxConstraints(minHeight: c.dnd(96, 116)),
             alignment: Alignment.center,
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
             decoration: BoxDecoration(
@@ -742,13 +740,8 @@ class _QBox extends StatelessWidget {
               gradient: gradient,
               borderRadius: BorderRadius.circular(18),
               border: Border.all(color: border ?? Colors.transparent, width: 2),
-              boxShadow: c.night
-                  ? null
-                  : [
-                      shadow
-                          ? const BoxShadow(color: Color(0x47FF7850), blurRadius: 16, offset: Offset(0, 6))
-                          : BoxShadow(color: c.shadow, blurRadius: 10, offset: const Offset(0, 3)),
-                    ],
+              // 日夜切换中阴影按 Hh 插值淡出（夜间为空列表）
+              boxShadow: shadow ? c.primaryShadows : c.cardShadows,
             ),
             child: child,
           ),

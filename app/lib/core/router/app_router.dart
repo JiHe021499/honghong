@@ -122,7 +122,7 @@ class _TabShellState extends ConsumerState<TabShell> {
     return Scaffold(
       body: shell,
       bottomNavigationBar: Container(
-        decoration: BoxDecoration(color: c.tabBg, border: Border(top: BorderSide(color: c.night ? const Color(0xFF2A1714) : c.line))),
+        decoration: BoxDecoration(color: c.tabBg, border: Border(top: BorderSide(color: c.dn(c.line, const Color(0xFF2A1714))))),
         child: SafeArea(
           top: false,
           child: SizedBox(
@@ -136,7 +136,7 @@ class _TabShellState extends ConsumerState<TabShell> {
                     onTap: () => shell.goBranch(i, initialLocation: i == shell.currentIndex),
                     child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                       Opacity(
-                        opacity: i == shell.currentIndex ? 1 : (c.night ? .5 : .75),
+                        opacity: i == shell.currentIndex ? 1 : c.dnd(.75, .5),
                         child: HhIcon(tabs[i].$1, size: 26, dim: false),
                       ),
                       const SizedBox(height: 3),

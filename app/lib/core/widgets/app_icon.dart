@@ -68,9 +68,10 @@ class HhIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final night = dim ?? context.hh.night;
     final img = Image.asset(icon.asset, width: size, height: size, filterQuality: FilterQuality.medium, semanticLabel: icon.file);
-    return night ? Opacity(opacity: .78, child: img) : img;
+    // 夜间调暗到 .78；日夜切换过程中按 nightness 插值
+    final opacity = dim == null ? context.hh.dnd(1, .78) : (dim! ? .78 : 1.0);
+    return opacity >= 1 ? img : Opacity(opacity: opacity, child: img);
   }
 }
 

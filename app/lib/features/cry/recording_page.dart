@@ -232,7 +232,7 @@ class _CircleIcon extends StatelessWidget {
         decoration: BoxDecoration(
           color: c.card,
           shape: BoxShape.circle,
-          boxShadow: c.night ? null : const [BoxShadow(color: Color(0x14000000), blurRadius: 10, offset: Offset(0, 2))],
+          boxShadow: c.dnShadows(const [BoxShadow(color: Color(0x14000000), blurRadius: 10, offset: Offset(0, 2))], null),
         ),
         child: Center(child: HhIcon(icon, size: 24)),
       ),

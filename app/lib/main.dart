@@ -42,6 +42,9 @@ class HonghongApp extends ConsumerWidget {
       theme: AppTheme.day,
       darkTheme: AppTheme.night,
       themeMode: night ? ThemeMode.dark : ThemeMode.light,
+      // 日夜切换：整页颜色 400ms easeInOut 插值（与首页日夜图标同步）；系统"减少动态"时瞬切
+      themeAnimationDuration: MediaQueryData.fromView(View.of(context)).disableAnimations ? Duration.zero : const Duration(milliseconds: 400),
+      themeAnimationCurve: Curves.easeInOut,
       routerConfig: ref.watch(routerProvider),
     );
   }

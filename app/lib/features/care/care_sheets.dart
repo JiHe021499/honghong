@@ -217,7 +217,7 @@ class _RoundBtn extends StatelessWidget {
     return Material(
       color: c.card,
       shape: const CircleBorder(),
-      elevation: c.night ? 0 : 1,
+      elevation: c.dnd(1, 0),
       shadowColor: const Color(0x22000000),
       child: InkWell(
         customBorder: const CircleBorder(),

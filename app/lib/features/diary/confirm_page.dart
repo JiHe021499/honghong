@@ -96,9 +96,9 @@ class _ConfirmPageState extends ConsumerState<ConfirmPage> {
                       key: const Key('save-disabled'),
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      decoration: BoxDecoration(color: c.night ? c.card : const Color(0xFFEDE5DC), borderRadius: BorderRadius.circular(16)),
+                      decoration: BoxDecoration(color: c.dn(const Color(0xFFEDE5DC), c.card), borderRadius: BorderRadius.circular(16)),
                       child: Text('请至少勾选一条',
-                          textAlign: TextAlign.center, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: c.night ? c.sub : const Color(0xFFB3A99F))),
+                          textAlign: TextAlign.center, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: c.dn(const Color(0xFFB3A99F), c.sub))),
                     )
                   : HhButton(key: const Key('save'), label: saving ? '正在保存…' : '保存 $picked 条', onPressed: saving ? null : _save),
             ),
@@ -116,7 +116,7 @@ class _RawBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.hh;
-    final ink = c.night ? c.blueInk : const Color(0xFF4E7FAE);
+    final ink = c.dn(const Color(0xFF4E7FAE), c.blueInk);
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
