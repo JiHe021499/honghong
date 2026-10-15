@@ -4,9 +4,11 @@ import { DailyLimiter } from './rate_limit.js';
 import { createLlm, LlmError } from './llm.js';
 import { parseDiary, ParseFailed } from './parse.js';
 import { normalizeStats, summarize } from './summary.js';
+import { entry, errorFields, requestId, stdoutLog } from './log.js';
+import { sanitizeBatch } from './client_events.js';
 
-const json = (res, code, body) => {
-  res.writeHead(code, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+const json = (res, code, body, rid) => {
+  res.writeHead(code, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...(rid ? { 'x-request-id': rid } : {}) });
   res.end(JSON.stringify(body));
 };
 
@@ -41,7 +43,7 @@ export function createHandler(cfg, {
   limiter = new DailyLimiter(cfg.limits),
   llm = createLlm(cfg.llm),
   idem = new IdemCache(cfg.idempotencyTtlMs ?? 24 * 3600 * 1000),
-  log = (m) => console.log(JSON.stringify(m)),
+  log = stdoutLog,
 } = {}) {
   const llmError = (e) => {
     if (e instanceof LlmError) return e.code === 'llm_not_configured' ? [503, { status: 'failed', error: 'llm_not_configured' }] : [502, { status: 'failed', error: e.code }];
@@ -78,13 +80,27 @@ export function createHandler(cfg, {
         return [200, resp];
       } catch (e) { return llmError(e); }
     },
+    // App 失败事件上报（需用户同意，App 端默认关）。每个事件单独一行日志，带 uid_hash 便于去重统计。
+    'client-events': async (body, claims, meta) => {
+      const events = sanitizeBatch(body);
+      for (const ev of events) log(entry({ ...ev, level: ev.level ?? (ev.outcome === 'fail' ? 'warn' : 'info'), src: 'app', request_id: ev.request_id ?? meta.request_id, uid_hash: hash(claims.sub), route: 'client-events' }));
+      meta.accepted = events.length;
+      return [202, { accepted: events.length }];
+    },
   };
 
   return async (req, res) => {
     const t0 = Date.now();
+    const rid = requestId(req.headers);
     const path = new URL(req.url, 'http://x').pathname.replace(/^\/+/, '');
     const meta = {};
-    const done = (code, body) => { json(res, code, body); log({ route: path, code, ms: Date.now() - t0, ...meta }); };
+    const done = (code, body) => {
+      json(res, code, body, rid);
+      const { request_id: _r, ...rest } = meta;
+      const err_code = code >= 400 ? (rest.err_code ?? body?.error ?? `http_${code}`) : undefined;
+      log(entry({ request_id: rid, route: path, code, ms: Date.now() - t0, err_code, ...rest }));
+    };
+    meta.request_id = rid;
     try {
       if (req.method === 'GET' && path === 'healthz') return done(200, { ok: true, llm_configured: llm.configured, asr_configured: Boolean(cfg.xfyun?.configured) });
       const handler = routes[path];
@@ -105,7 +121,9 @@ export function createHandler(cfg, {
       if (!limiter.take(claims.sub, path)) return done(429, { error: 'rate_limited' });
       const [code, out] = await handler(body, claims, meta);
       return done(code, out);
-    } catch {
+    } catch (e) {
+      // 记录异常类型和代码位置，不记 message（可能含用户文本）
+      Object.assign(meta, { err_code: 'internal', ...errorFields(e) });
       return done(500, { error: 'internal' });
     }
   };

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../domain/diary/parse_result.dart';
 
@@ -67,7 +68,7 @@ class HttpDiaryApi implements DiaryApi {
     try {
       final r = await _dio.post<Map<String, dynamic>>('diary-parse',
           data: {'text': text, 'age_in_days': ageInDays, 'now': isoWithOffset(now), 'input_type': inputType, 'client_version': clientVersion},
-          options: Options(headers: {'authorization': 'Bearer $jwt'}));
+          options: Options(headers: {'authorization': 'Bearer $jwt', 'x-request-id': const Uuid().v4()}));
       return ParseResult.fromGateway(r.data ?? const {}, text: text, inputType: inputType, now: now, latencyMs: sw.elapsedMilliseconds);
     } on DioException catch (e) {
       final code = e.response?.statusCode;
@@ -94,7 +95,7 @@ class HttpDiaryApi implements DiaryApi {
     try {
       final r = await _dio.post<Map<String, dynamic>>('diary-summary',
           data: {'date': date, 'age_in_days': ageInDays, 'stats': stats, 'idempotency_key': idempotencyKey},
-          options: Options(headers: {'authorization': 'Bearer $jwt'}));
+          options: Options(headers: {'authorization': 'Bearer $jwt', 'x-request-id': const Uuid().v4()}));
       final c = r.data?['content'];
       if (c is! String || c.trim().isEmpty) throw const DiaryApiException(DiaryApiError.failed, 'empty');
       return (content: c.trim(), promptVersion: (r.data?['prompt_version'] as String?) ?? 'unknown');

@@ -81,7 +81,7 @@ void main() {
   test('CloudVoiceCapture：发 PCM 二进制帧 + end，拿到 final', () async {
     final sock = FakeSocket();
     String? jwt;
-    final cap = CloudVoiceCapture(source: FakePcm(), token: () async => 'jwt-x', connect: (t) async {
+    final cap = CloudVoiceCapture(source: FakePcm(), token: () async => 'jwt-x', connect: (t, _) async {
       jwt = t;
       return sock;
     });
@@ -98,16 +98,16 @@ void main() {
   });
 
   test('CloudVoiceCapture：网关报错 → 空文本且 failed；无麦克风权限 → start=false', () async {
-    final cap = CloudVoiceCapture(source: FakePcm(), token: () async => 'j', connect: (_) async => FakeSocket(error: true));
+    final cap = CloudVoiceCapture(source: FakePcm(), token: () async => 'j', connect: (_, _) async => FakeSocket(error: true));
     await cap.start(onPartial: (_) {});
     expect(await cap.stop(), '');
     expect(cap.failed, isTrue);
-    final noMic = CloudVoiceCapture(source: FakePcm()..permission = false, token: () async => 'j', connect: (_) async => FakeSocket());
+    final noMic = CloudVoiceCapture(source: FakePcm()..permission = false, token: () async => 'j', connect: (_, _) async => FakeSocket());
     expect(await noMic.start(onPartial: (_) {}), isFalse);
   });
 
   test('CloudVoiceCapture：连不上网关 → start=false', () async {
-    final cap = CloudVoiceCapture(source: FakePcm(), token: () async => 'j', connect: (_) async => throw Exception('offline'));
+    final cap = CloudVoiceCapture(source: FakePcm(), token: () async => 'j', connect: (_, _) async => throw Exception('offline'));
     expect(await cap.start(onPartial: (_) {}), isFalse);
     expect(cap.failed, isTrue);
   });

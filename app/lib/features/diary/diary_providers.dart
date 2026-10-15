@@ -1,7 +1,11 @@
 import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/widgets.dart' hide Table;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
+
+import '../../core/log/client_events.dart';
 
 import '../../core/env.dart';
 import '../../core/prefs.dart';
@@ -41,10 +45,23 @@ final diaryApiProvider = Provider<DiaryApi?>((ref) {
 final cloudVoiceCaptureProvider = Provider<VoiceCapture?>((ref) {
   if (!aiGatewayConfigured) return null;
   final url = asrUrl(aiGatewayUrl);
-  return CloudVoiceCapture(token: _gatewayToken, connect: (jwt) => IoAsrSocket.connect(url, jwt));
+  return CloudVoiceCapture(token: _gatewayToken, connect: (jwt, rid) => IoAsrSocket.connect(url, jwt, requestId: rid));
 });
 
 final voiceCaptureProvider = Provider<VoiceCapture>((ref) => SystemVoiceCapture());
+
+/// 按住说话失败统计上报（用户在设置里同意后才发；默认关）。未配置网关时只是空操作。
+final clientEventsReporterProvider = Provider<ClientEventsReporter>((ref) {
+  final r = ClientEventsReporter(
+    consent: () => ref.read(clientEventsConsentProvider),
+    send: aiGatewayConfigured ? gatewaySender(baseUrl: aiGatewayUrl, token: _gatewayToken, requestId: () => const Uuid().v4()) : null,
+    os: clientOs(),
+  );
+  if (aiGatewayConfigured) {
+    PackageInfo.fromPlatform().then((p) => r.appVer = p.version, onError: (_) {});
+  }
+  return r;
+});
 
 final diaryServiceProvider = Provider((ref) => DiaryService(ref.watch(databaseProvider)));
 

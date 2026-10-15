@@ -88,7 +88,8 @@ test('端到端（假讯飞）：签名通过、分帧 ≤1280 字节、返回 p
       assert.ok(ws.msgs.some((m) => m.type === 'partial'));
       const line = JSON.stringify(logs);
       assert.ok(!line.includes('今天'));
-      assert.deepEqual(Object.keys(logs[0]).sort(), ['audio_ms', 'code', 'ms', 'route', 'status']);
+      assert.deepEqual(Object.keys(logs[0]).sort(), ['audio_ms', 'code', 'level', 'ms', 'request_id', 'route', 'status', 'svc', 'ts']);
+      assert.equal(logs[0].level, 'info');
       assert.equal(logs[0].audio_ms, 1000);
       assert.equal(logs[0].status, 'ok');
     });
