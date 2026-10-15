@@ -1,0 +1,52 @@
+# ⚠️ 这个文件需要 Liam 手动复制到 .github/workflows/probe.yml（当前自动化用的 gh token 没有 workflow 权限）。
+# 外部 ASR 合成探测：每 5 分钟从 GitHub 的机器探测一次线上网关（服务器 / DNS / 反代整体挂掉时也能告警）。
+# 注意：GitHub 的定时任务在高峰期可能延迟几分钟甚至跳过，10 分钟内告警主要靠服务器内的 cron，这里是兜底。
+name: ASR probe
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: asr-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: backend/ai-gateway
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # 连续失败计数跨次运行保存在 cache 里（每次用新 key 保存，按前缀取最近一次）
+      - name: 取上次状态
+        uses: actions/cache/restore@v4
+        with:
+          path: .probe-state.json
+          key: asr-probe-state-${{ github.run_id }}
+          restore-keys: asr-probe-state-
+      - name: 探测
+        id: probe
+        env:
+          PROBE_BASE_URL: ${{ vars.PROBE_BASE_URL }}       # 例如 https://<host>/ai/（仓库变量）
+          PROBE_JWT: ${{ secrets.PROBE_JWT }}              # 探测账号 JWT；不要把 SUPABASE_JWT_SECRET 放到 GitHub
+          PROBE_REQUIRE_LLM: ${{ vars.PROBE_REQUIRE_LLM }} # 1 = 也要求 llm_configured
+          PROBE_SOURCE: github-actions
+          PROBE_STATE_FILE: .probe-state.json
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+          ALERT_WEBHOOK_FORMAT: ${{ vars.ALERT_WEBHOOK_FORMAT }}
+        run: node backend/ai-gateway/eval/probe.js
+      - name: 保存状态
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .probe-state.json
+          key: asr-probe-state-${{ github.run_id }}
