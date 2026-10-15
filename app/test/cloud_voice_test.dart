@@ -1,3 +1,4 @@
+import 'package:honghong/core/env.dart';
 import 'package:honghong/core/router/app_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
@@ -65,6 +66,16 @@ void main() {
   test('asrUrl：https 网关 → wss://…/ai/diary-asr', () {
     expect(asrUrl('https://honghong.hczhw.com/ai/').toString(), 'wss://honghong.hczhw.com/ai/diary-asr');
     expect(asrUrl('http://127.0.0.1:8787').toString(), 'ws://127.0.0.1:8787/diary-asr');
+  });
+
+  // 回归：0.1.39-dev 发布构建只注入了 SUPABASE_URL，没注入 AI_GATEWAY_URL → 网关地址为空，
+  // 联网识别和整理整体被关掉，按住说话本机识别一失败就只能报错。
+  test('网关地址：未显式注入时取 Supabase 同域 /ai/', () {
+    expect(resolveAiGatewayUrl('', 'https://hh.example.com'), 'https://hh.example.com/ai/');
+    expect(resolveAiGatewayUrl('', 'https://hh.example.com/'), 'https://hh.example.com/ai/');
+    expect(resolveAiGatewayUrl('https://gw.example.com/ai/', 'https://hh.example.com'), 'https://gw.example.com/ai/');
+    expect(resolveAiGatewayUrl('', ''), '');
+    expect(asrUrl(resolveAiGatewayUrl('', 'https://hh.example.com')).toString(), 'wss://hh.example.com/ai/diary-asr');
   });
 
   test('CloudVoiceCapture：发 PCM 二进制帧 + end，拿到 final', () async {
