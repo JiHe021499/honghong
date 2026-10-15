@@ -10,6 +10,7 @@ import '../../core/widgets/hh_widgets.dart';
 import '../../domain/models/cause_ui.dart';
 import '../../domain/models/cry_cause.dart';
 import '../../domain/predictor/cry_predictor.dart';
+import '../care/sleep_wake_prompt.dart';
 import 'recording_page.dart';
 
 final _eventPredictionProvider = FutureProvider.family<Prediction?, String>((ref, id) async {
@@ -30,105 +31,161 @@ class ResultPage extends ConsumerWidget {
     final pred = ref.watch(_eventPredictionProvider(eventId));
     return Scaffold(
       body: SafeArea(
-        child: pred.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('出错了：$e')),
-          data: (p) {
-            if (p == null) return const Center(child: Text('找不到这次记录'));
-            final top = p.top(3);
-            // 只展示前三，概率按前三重新归一，和设计一致加起来是 100%
-            final sum = top.fold<double>(0, (a, s) => a + s.probability);
-            int pct(CauseScore s) => (s.probability / sum * 100).round();
-            final first = top.first;
-            final second = top.length > 1 ? top[1] : null;
-            return ListView(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-              children: [
-                SizedBox(
-                  height: 52,
-                  child: Stack(alignment: Alignment.center, children: [
-                    Align(alignment: Alignment.centerLeft, child: CircleBack(onTap: () => context.go(Routes.home))),
-                    Text('可能的原因', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: c.ink)),
-                  ]),
-                ),
-                const SizedBox(height: 14),
-                HhCard(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text.rich(TextSpan(children: [
-                      const TextSpan(text: '我们猜，宝宝'),
-                      TextSpan(text: '可能', style: TextStyle(fontWeight: FontWeight.w700, color: c.ink)),
-                      const TextSpan(text: '是…'),
-                    ]), style: TextStyle(fontSize: 14, color: c.sub)),
-                    const SizedBox(height: 6),
-                    for (var i = 0; i < top.length; i++)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 7),
-                        child: Row(children: [
-                          SizedBox(
-                            width: 86,
-                            child: Text.rich(TextSpan(children: [iconSpan(top[i].cause.icon, size: 20), TextSpan(text: top[i].cause.label.split('/').first)]),
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: c.ink)),
-                          ),
-                          Expanded(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(6),
-                              child: LinearProgressIndicator(
-                                value: pct(top[i]) / 100,
-                                minHeight: 12,
-                                color: barColor(c, i),
-                                backgroundColor: const Color(0xFFF5EDE5),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: pred.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('出错了：$e')),
+                data: (p) {
+                  if (p == null) return const Center(child: Text('找不到这次记录'));
+                  final top = p.top(3);
+                  // 只展示前三，概率按前三重新归一，和设计一致加起来是 100%
+                  final sum = top.fold<double>(0, (a, s) => a + s.probability);
+                  int pct(CauseScore s) => (s.probability / sum * 100).round();
+                  final first = top.first;
+                  final second = top.length > 1 ? top[1] : null;
+                  return ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                    children: [
+                      SizedBox(
+                        height: 52,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: CircleBack(onTap: () => context.go(Routes.home)),
+                            ),
+                            Text(
+                              '可能的原因',
+                              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: c.ink),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      HhCard(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  const TextSpan(text: '我们猜，宝宝'),
+                                  TextSpan(
+                                    text: '可能',
+                                    style: TextStyle(fontWeight: FontWeight.w700, color: c.ink),
+                                  ),
+                                  const TextSpan(text: '是…'),
+                                ],
+                              ),
+                              style: TextStyle(fontSize: 14, color: c.sub),
+                            ),
+                            const SizedBox(height: 6),
+                            for (var i = 0; i < top.length; i++)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 7),
+                                child: Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 86,
+                                      child: Text.rich(
+                                        TextSpan(
+                                          children: [
+                                            iconSpan(top[i].cause.icon, size: 20),
+                                            TextSpan(text: top[i].cause.label.split('/').first),
+                                          ],
+                                        ),
+                                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: c.ink),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: LinearProgressIndicator(
+                                          value: pct(top[i]) / 100,
+                                          minHeight: 12,
+                                          color: barColor(c, i),
+                                          backgroundColor: const Color(0xFFF5EDE5),
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      width: 52,
+                                      child: Text(
+                                        '${pct(top[i])}%',
+                                        textAlign: TextAlign.right,
+                                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: c.ink),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            const SizedBox(height: 8),
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  iconSpan(AppIcon.tip, size: 18),
+                                  const TextSpan(text: '为什么这么猜：'),
+                                  TextSpan(
+                                    text: first.reason,
+                                    style: TextStyle(fontWeight: FontWeight.w700, color: c.ink),
+                                  ),
+                                  TextSpan(text: '，${first.cause == CryCause.hungry ? '和宝宝以往饿的时候相似' : '结合宝宝以往的反馈综合判断'}。'),
+                                ],
+                              ),
+                              style: TextStyle(fontSize: 14, color: c.sub, height: 1.6),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFFE7DB), Color(0xFFFFF1E8)]),
+                        ),
+                        child: Row(
+                          children: [
+                            HhIcon(first.cause.icon, size: 44),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '建议先试${first.cause.action}',
+                                    style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: c.ink),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text('如果 10 分钟内没好转，再试试${second?.cause.action ?? '抱一抱'}', style: TextStyle(fontSize: 12, color: c.sub)),
+                                ],
                               ),
                             ),
-                          ),
-                          SizedBox(
-                            width: 52,
-                            child: Text('${pct(top[i])}%', textAlign: TextAlign.right, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: c.ink)),
-                          ),
-                        ]),
+                          ],
+                        ),
                       ),
-                    const SizedBox(height: 8),
-                    Text.rich(TextSpan(children: [
-                      iconSpan(AppIcon.tip, size: 18),
-                      const TextSpan(text: '为什么这么猜：'),
-                      TextSpan(text: first.reason, style: TextStyle(fontWeight: FontWeight.w700, color: c.ink)),
-                      TextSpan(text: '，${first.cause == CryCause.hungry ? '和宝宝以往饿的时候相似' : '结合宝宝以往的反馈综合判断'}。'),
-                    ]), style: TextStyle(fontSize: 14, color: c.sub, height: 1.6)),
-                  ]),
-                ),
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFFE7DB), Color(0xFFFFF1E8)]),
-                  ),
-                  child: Row(children: [
-                    HhIcon(first.cause.icon, size: 44),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('建议先试${first.cause.action}', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: c.ink)),
-                        const SizedBox(height: 4),
-                        Text('如果 10 分钟内没好转，再试试${second?.cause.action ?? '抱一抱'}', style: TextStyle(fontSize: 12, color: c.sub)),
-                      ]),
-                    ),
-                  ]),
-                ),
-                const SizedBox(height: 14),
-                for (var i = 0; i < top.length; i++) _CauseTile(score: top[i], pct: pct(top[i]), initiallyOpen: i == 0),
-                const SizedBox(height: 4),
-                HhButton(
-                  label: '宝宝不哭了，告诉我结果',
-                  primary: false,
-                  onPressed: () => context.pushReplacement(Routes.feedback(eventId)),
-                ),
-                const SizedBox(height: 16),
-                Text('结果仅供参考，不能替代医生判断。若哭声异常尖锐、持续超过 2 小时或伴发烧，请及时就医。',
-                    textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: c.sub, height: 1.6)),
-              ],
-            );
-          },
+                      const SizedBox(height: 14),
+                      const SleepResultCard(),
+                      for (var i = 0; i < top.length; i++) _CauseTile(score: top[i], pct: pct(top[i]), initiallyOpen: i == 0),
+                      const SizedBox(height: 4),
+                      HhButton(label: '宝宝不哭了，告诉我结果', primary: false, onPressed: () => context.pushReplacement(Routes.feedback(eventId))),
+                      const SizedBox(height: 16),
+                      Text(
+                        '结果仅供参考，不能替代医生判断。若哭声异常尖锐、持续超过 2 小时或伴发烧，请及时就医。',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 12, color: c.sub, height: 1.6),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            const Positioned(left: 20, right: 20, top: 8, child: SleepEndedToast()),
+          ],
         ),
       ),
     );
@@ -150,27 +207,47 @@ class _CauseTileState extends State<_CauseTile> {
   Widget build(BuildContext context) {
     final c = context.hh;
     final cause = widget.score.cause;
-    TextSpan row(String k, String v) => TextSpan(children: [
-          TextSpan(text: '$k：', style: TextStyle(fontWeight: FontWeight.w700, color: c.peach2)),
-          TextSpan(text: v),
-        ]);
+    TextSpan row(String k, String v) => TextSpan(
+      children: [
+        TextSpan(
+          text: '$k：',
+          style: TextStyle(fontWeight: FontWeight.w700, color: c.peach2),
+        ),
+        TextSpan(text: v),
+      ],
+    );
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: HhCard(
         radius: 16,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         onTap: () => setState(() => open = !open),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Expanded(child: Text.rich(TextSpan(children: [iconSpan(cause.icon, size: 20), TextSpan(text: '${cause.title} · ${widget.pct}%')]), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: c.ink))),
-            HhIcon(open ? AppIcon.chevronUp : AppIcon.chevronDown, size: 22),
-          ]),
-          if (open) ...[
-            const SizedBox(height: 8),
-            Text.rich(row('怎么判断', cause.howToTell), style: TextStyle(fontSize: 14, color: c.ink, height: 1.6)),
-            Text.rich(row('怎么安抚', cause.howToSoothe), style: TextStyle(fontSize: 14, color: c.ink, height: 1.6)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        iconSpan(cause.icon, size: 20),
+                        TextSpan(text: '${cause.title} · ${widget.pct}%'),
+                      ],
+                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: c.ink),
+                  ),
+                ),
+                HhIcon(open ? AppIcon.chevronUp : AppIcon.chevronDown, size: 22),
+              ],
+            ),
+            if (open) ...[
+              const SizedBox(height: 8),
+              Text.rich(row('怎么判断', cause.howToTell), style: TextStyle(fontSize: 14, color: c.ink, height: 1.6)),
+              Text.rich(row('怎么安抚', cause.howToSoothe), style: TextStyle(fontSize: 14, color: c.ink, height: 1.6)),
+            ],
           ],
-        ]),
+        ),
       ),
     );
   }

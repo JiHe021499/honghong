@@ -35,13 +35,19 @@ enum DiaperKind {
 
 /// care_logs.detail 字段的结构化表示（JSON）。
 class CareDetail {
-  const CareDetail({this.method, this.side, this.ml, this.note, this.diaper});
+  const CareDetail({this.method, this.side, this.ml, this.note, this.diaper, this.endedBy});
 
   final FeedMethod? method;
   final FeedSide? side;
   final int? ml;
   final String? note; // 睡觉/拍嗝备注，例如"小睡"
   final DiaperKind? diaper;
+
+  /// 谁结束的计时：目前只有 "cry"（睡眠中哭醒提示里一键结束）
+  final String? endedBy;
+
+  CareDetail copyWith({String? endedBy}) =>
+      CareDetail(method: method, side: side, ml: ml, note: note, diaper: diaper, endedBy: endedBy ?? this.endedBy);
 
   static const feedAmounts = [60, 90, 120, 150];
   static const sleepNotes = ['小睡', '夜间长觉', '不易入睡'];
@@ -53,6 +59,7 @@ class CareDetail {
         if (ml != null) 'ml': ml,
         if (note != null && note!.isNotEmpty) 'note': note,
         if (diaper != null) 'diaper': diaper!.name,
+        if (endedBy != null) 'endedBy': endedBy,
       };
 
   String encode() => jsonEncode(toJson());
@@ -69,6 +76,7 @@ class CareDetail {
         ml: (j['ml'] as num?)?.toInt(),
         note: j['note'] as String?,
         diaper: e(DiaperKind.values, j['diaper']),
+        endedBy: j['endedBy'] as String?,
       );
     } catch (_) {
       return const CareDetail();

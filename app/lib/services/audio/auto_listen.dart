@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:record/record.dart';
 
 import '../../core/prefs.dart';
+import '../../features/care/sleep_wake_prompt.dart';
 import 'cry_detector.dart';
 import '../../core/app_clock.dart';
 
@@ -71,13 +72,21 @@ class AutoListenController extends Notifier<AutoListenStatus> {
     final d = _detector;
     if (d == null || _paused) return;
     for (final f in _buffer.add(pcm16ToFloat(bytes))) {
-      final now = AppClock.now();
-      if (_trigger.add(d.score(f), now)) {
-        pause();
-        ref.read(cryDetectedProvider.notifier).fire(now);
-        return;
-      }
+      if (onScore(d.score(f), AppClock.now())) return;
     }
+  }
+
+  /// 一帧哭声得分。睡觉计时中交给哭醒检测（只提示，不跳录音页、不暂停监听）；
+  /// 否则按原逻辑触发录音。返回 true 表示已暂停监听。
+  @visibleForTesting
+  bool onScore(double score, DateTime now) {
+    if (ref.read(sleepWakeProvider.notifier).onFrame(score >= _trigger.threshold, now)) return false;
+    if (_trigger.add(score, now)) {
+      pause();
+      ref.read(cryDetectedProvider.notifier).fire(now);
+      return true;
+    }
+    return false;
   }
 
   /// 录音页占用麦克风前调用
