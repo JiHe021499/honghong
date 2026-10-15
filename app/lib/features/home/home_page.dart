@@ -17,6 +17,7 @@ import '../../domain/models/care_log_type.dart';
 import '../../services/audio/auto_listen.dart';
 import '../care/care_actions.dart';
 import '../care/care_log_row.dart';
+import '../care/sleep_wake_prompt.dart';
 import '../diary/diary_entry_card.dart';
 import '../diary/diary_providers.dart' show summaryTriggerProvider;
 import '../../core/app_clock.dart';
@@ -94,7 +95,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     final active = ref.watch(activeSessionsProvider).value ?? const <CareLog>[];
     ref.watch(autoListenControllerProvider); // 开关打开时在首页监听哭声
     ref.listen(cryDetectedProvider, (_, next) {
-      if (next != null && GoRouterState.of(context).uri.path == Routes.home) {
+      // 睡觉计时中不自动跳录音页（改由哭醒提示卡处理）
+      final sleeping = (ref.read(activeSessionsProvider).value ?? const <CareLog>[]).any((l) => l.type == CareLogType.sleep.name);
+      if (next != null && !sleeping && GoRouterState.of(context).uri.path == Routes.home) {
         context.push('${Routes.recording}?auto=1');
       }
     });
@@ -137,6 +140,13 @@ class _HomePageState extends ConsumerState<HomePage> {
               left: 20,
               right: 20,
               child: _DiaperToast(onTap: _editDiaper, visible: _toastVisible),
+            ),
+            const Positioned(left: 20, right: 20, top: 8, child: SleepEndedToast()),
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 12,
+              child: SleepWakeCard(onListen: () => context.push(Routes.recording)),
             ),
           ],
         ),
