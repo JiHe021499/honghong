@@ -136,9 +136,14 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          # 妈咪日记 AI 网关（/ai/diary-parse、/ai/diary-asr）。可用仓库变量 AI_GATEWAY_URL 覆盖，默认与 Supabase 同域的 /ai/
+          AI_GATEWAY_URL: ${{ vars.AI_GATEWAY_URL }}
         run: |
+          if [ -z "$AI_GATEWAY_URL" ] && [ -n "$SUPABASE_URL" ]; then AI_GATEWAY_URL="${SUPABASE_URL%/}/ai/"; fi
+          if [ -z "$AI_GATEWAY_URL" ]; then echo "::error::缺少 AI_GATEWAY_URL（妈咪日记语音/整理会整体不可用）"; exit 1; fi
           flutter build apk --release --target-platform android-arm64 \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
+            --dart-define=AI_GATEWAY_URL="$AI_GATEWAY_URL" \
             --build-name "${{ steps.ver.outputs.name }}" --build-number "${{ steps.ver.outputs.code }}"
           rm -f android/key.properties android/app/honghong-release.jks
           cp build/app/outputs/flutter-apk/app-release.apk "honghong-${{ steps.ver.outputs.name }}.apk"
