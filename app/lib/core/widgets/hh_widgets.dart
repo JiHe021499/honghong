@@ -148,7 +148,19 @@ class PulseDot extends StatefulWidget {
 }
 
 class _PulseDotState extends State<PulseDot> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600))..repeat();
+  late final _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600));
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 减少动态：停在静态实心点；否则 1.6s 一次脉冲（<3 次/秒，不闪烁）
+    final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    if (still) {
+      _c.stop();
+    } else if (!_c.isAnimating) {
+      _c.repeat();
+    }
+  }
 
   @override
   void dispose() {
@@ -159,20 +171,29 @@ class _PulseDotState extends State<PulseDot> with SingleTickerProviderStateMixin
   @override
   Widget build(BuildContext context) {
     final color = context.hh.peach2;
+    final dot = SizedBox.square(dimension: widget.size);
+    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
+      return Container(
+        key: const Key('pulse-dot-static'),
+        width: widget.size,
+        height: widget.size,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      );
+    }
     return AnimatedBuilder(
       animation: _c,
-      builder: (_, _) {
+      builder: (_, child) {
         final t = (_c.value / .7).clamp(0.0, 1.0);
-        return Container(
-          width: widget.size,
-          height: widget.size,
+        return DecoratedBox(
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
             boxShadow: [BoxShadow(color: color.withValues(alpha: .45 * (1 - t)), spreadRadius: 10 * t)],
           ),
+          child: child,
         );
       },
+      child: dot,
     );
   }
 }
